@@ -35,7 +35,7 @@ export class SidebarCompositor {
     this.originalWrite = this.terminal.write.bind(this.terminal);
   }
 
-  private readonly sidebarWidth = 45;
+  private readonly sidebarWidth = 40;
 
   install(): void {
     // Narrow terminal.columns so pi renders in the left portion only.
@@ -49,7 +49,7 @@ export class SidebarCompositor {
       get() {
         const d = origDesc;
         const raw = d?.get ? (d.get.call(terminal) ?? 80) : (typeof d?.value === "number" ? d.value : 80);
-        return Math.max(1, raw - 45 - 1);
+        return Math.max(1, raw - 40 - 1);
       },
     });
 
