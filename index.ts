@@ -21,6 +21,8 @@ let currentModel: string | null = null;
 let contextTokens: number | null = null;
 let contextPercent: number | null = null;
 let contextWindow: number | null = null;
+let tokensIn = 0;
+let tokensOut = 0;
 let mcpServers: McpServerInfo[] = [];
 
 function inferSessionTitle(sm: any): string | null {
@@ -60,6 +62,8 @@ function buildSidebarContext(cwd: string | undefined): SidebarContext {
     contextTokens,
     contextPercent,
     contextWindow,
+    tokensIn,
+    tokensOut,
     mcpServers,
   };
 }
@@ -129,6 +133,17 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
     contextPercent = null;
     contextWindow = null;
     mcpServers = getMcpServers();
+    // Seed token totals from existing session entries (handles resume)
+    { let inSum = 0, outSum = 0;
+      for (const e of (ctx.sessionManager.getBranch?.() ?? [])) {
+        const m = (e as any).message;
+        if ((e as any).type !== "message" || m?.role !== "assistant") continue;
+        if (m?.stopReason === "error" || m?.stopReason === "aborted") continue;
+        inSum += m.usage?.input ?? 0;
+        outSum += m.usage?.output ?? 0;
+      }
+      tokensIn = inSum; tokensOut = outSum;
+    }
     invalidateWorkspaceCache();
     currentCwd = (ctx as any).cwd;
     updateContextUsage(ctx);
@@ -188,6 +203,8 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
   });
 
   pi.on("session_shutdown", async () => {
+    tokensIn = 0;
+    tokensOut = 0;
     sessionTitle = null;
     todos = [];
     subagentsMap.clear();
@@ -268,11 +285,18 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
 
   pi.on("message_end", async (event, ctx) => {
     currentCwd = (ctx as any).cwd;
+    const usage = (event as any).message?.usage;
+    if (usage && (event as any).message?.role === "assistant") {
+      const stopReason = (event as any).message?.stopReason;
+      if (stopReason !== "error" && stopReason !== "aborted") {
+        tokensIn += usage.input ?? 0;
+        tokensOut += usage.output ?? 0;
+      }
+    }
     if (activeSubagentId) {
       const active = subagentsMap.get(activeSubagentId);
       if (active) {
         active.turns++;
-        const usage = (event as any).message?.usage;
         if (usage && typeof usage.output === "number") {
           active.tokens += (usage.input ?? 0) + (usage.output ?? 0);
         }

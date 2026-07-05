@@ -22,6 +22,8 @@ function makeCtx(overrides: Partial<SidebarContext> = {}): SidebarContext {
     contextTokens: null,
     contextPercent: null,
     contextWindow: null,
+    tokensIn: 0,
+    tokensOut: 0,
     mcpServers: [],
     ...overrides,
   };

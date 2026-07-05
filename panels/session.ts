@@ -29,6 +29,14 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
     lines.push(dim(`  ctx `) + fg(COLORS.header, `${tokens} / ${win}`) + dim(` (${pct})`));
   }
 
+  // Token in / out
+  if (ctx.tokensIn > 0 || ctx.tokensOut > 0) {
+    lines.push(
+      dim("  ↑") + fg(COLORS.muted, formatK(ctx.tokensIn)) +
+      dim("  ↓") + fg(COLORS.muted, formatK(ctx.tokensOut))
+    );
+  }
+
   return lines;
 }
 

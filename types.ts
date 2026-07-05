@@ -48,5 +48,7 @@ export interface SidebarContext {
   contextTokens: number | null;
   contextPercent: number | null;
   contextWindow: number | null;
+  tokensIn: number;
+  tokensOut: number;
   mcpServers: McpServerInfo[];
 }
