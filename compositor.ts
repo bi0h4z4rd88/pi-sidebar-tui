@@ -28,7 +28,6 @@ export class SidebarCompositor {
   private originalDoRender: (() => void) | null = null;
   private originalWrite: (data: string) => void;
   private disposed = false;
-  private lastSepCol = -1;
 
   constructor(tui: any, sidebarWidth: number, getCtx: () => SidebarContext) {
     this.tui = tui;
@@ -67,11 +66,6 @@ export class SidebarCompositor {
         self.paint();
       };
     }
-
-    // Restrict terminal scroll region to left portion only (DECLRMM + DECSLRM).
-    // Prevents main-area scroll from clobbering sidebar columns.
-    const sepCol = this.getRawColumns() - this.sidebarWidth;
-    this.originalWrite(`\x1b[?69h\x1b[1;${sepCol - 1}s`);
   }
 
   private getRawColumns(): number {
@@ -89,12 +83,6 @@ export class SidebarCompositor {
     const sidebarCol = sepCol + 1;
     const ctx = this.getCtx();
     const lines = renderSidebar(ctx, this.sidebarWidth);
-
-    // Re-apply scroll margins on resize
-    if (sepCol !== this.lastSepCol) {
-      this.lastSepCol = sepCol;
-      this.originalWrite(`\x1b[?69h\x1b[1;${sepCol - 1}s`);
-    }
 
     let buf = "\x1b[?2026h"; // begin synchronized output
     buf += "\x1b7";          // save cursor (DECSC)
@@ -134,9 +122,6 @@ export class SidebarCompositor {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
-
-    // Reset DECSLRM margins and disable DECLRMM
-    this.originalWrite("\x1b[s\x1b[?69l");
 
     if (this.originalColumnsDesc) {
       Object.defineProperty(this.terminal, "columns", this.originalColumnsDesc);
