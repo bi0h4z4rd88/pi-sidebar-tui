@@ -16,6 +16,10 @@ let sessionTitle: string | null = null;
 let todos: TodoItem[] = [];
 const subagentsMap = new Map<string, SubagentEntry>();
 let activeSubagentId: string | null = null;
+let currentModel: string | null = null;
+let contextPercent: number | null = null;
+let contextWindow: number | null = null;
+let mcpServers: { connected: number; total: number } | null = null;
 
 function buildSidebarContext(cwd: string | undefined): SidebarContext {
   const ws = getWorkspaceData(cwd);
@@ -28,7 +32,34 @@ function buildSidebarContext(cwd: string | undefined): SidebarContext {
     untrackedCount: ws.untrackedCount,
     workspaceFiles: ws.files,
     cwd,
+    model: currentModel,
+    contextPercent,
+    contextWindow,
+    mcpServers,
   };
+}
+
+function updateContextUsage(ctx: any): void {
+  try {
+    const usage = ctx.getContextUsage?.();
+    if (usage) {
+      contextPercent = typeof usage.percent === "number" ? usage.percent : null;
+      contextWindow = typeof usage.contextWindow === "number" ? usage.contextWindow : null;
+    }
+    const model = ctx.model;
+    if (model?.name) currentModel = model.name;
+    else if (model?.id) currentModel = model.id;
+
+    // MCP: try untyped access
+    const raw = (ctx as any).mcpServers ?? (ctx as any).mcp?.servers ?? null;
+    if (Array.isArray(raw)) {
+      const total = raw.length;
+      const connected = raw.filter((s: any) => s?.connected || s?.status === "connected").length;
+      mcpServers = { connected, total };
+    }
+  } catch {
+    // ignore
+  }
 }
 
 function parseTodos(input: unknown): TodoItem[] | null {
@@ -75,8 +106,13 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
     todos = [];
     subagentsMap.clear();
     activeSubagentId = null;
+    currentModel = null;
+    contextPercent = null;
+    contextWindow = null;
+    mcpServers = null;
     invalidateWorkspaceCache();
     currentCwd = (ctx as any).cwd;
+    updateContextUsage(ctx);
 
     const hasUI = (ctx as any).hasUI;
     if (!hasUI) return;
@@ -138,6 +174,7 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
     if (sessionTitle === null && typeof (event as any).prompt === "string") {
       sessionTitle = (event as any).prompt.slice(0, 60);
     }
+    updateContextUsage(ctx);
     requestRender?.();
   });
 
@@ -221,13 +258,23 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
 
   pi.on("turn_end", async (_event, ctx) => {
     currentCwd = (ctx as any).cwd;
+    updateContextUsage(ctx);
     invalidateWorkspaceCache();
     requestRender?.();
   });
 
   pi.on("agent_end", async (_event, ctx) => {
     currentCwd = (ctx as any).cwd;
+    updateContextUsage(ctx);
     invalidateWorkspaceCache();
+    requestRender?.();
+  });
+
+  pi.on("model_select", async (event, ctx) => {
+    const m = (event as any).model;
+    if (m?.name) currentModel = m.name;
+    else if (m?.id) currentModel = m.id;
+    updateContextUsage(ctx);
     requestRender?.();
   });
 

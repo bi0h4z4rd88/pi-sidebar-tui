@@ -21,6 +21,10 @@ function makeCtx(overrides: Partial<SidebarContext> = {}): SidebarContext {
     untrackedCount: 0,
     workspaceFiles: [],
     cwd: "/tmp/test",
+    model: null,
+    contextPercent: null,
+    contextWindow: null,
+    mcpServers: null,
     ...overrides,
   };
 }

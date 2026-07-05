@@ -36,4 +36,8 @@ export interface SidebarContext {
   untrackedCount: number;
   workspaceFiles: WorkspaceFile[];
   cwd: string | undefined;
+  model: string | null;
+  contextPercent: number | null;
+  contextWindow: number | null;
+  mcpServers: { connected: number; total: number } | null;
 }

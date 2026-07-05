@@ -1,6 +1,6 @@
 import { truncateToWidth } from "@earendil-works/pi-tui";
 import type { SidebarContext } from "../types.ts";
-import { dim, panelHeader } from "../colors.ts";
+import { dim, fg, COLORS, panelHeader } from "../colors.ts";
 
 export function renderSessionPanel(ctx: SidebarContext, width: number): string[] {
   const lines: string[] = [...panelHeader("Session", width)];
@@ -13,5 +13,33 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
     lines.push(dim(`  ${truncated}`));
   }
 
+  lines.push("");
+
+  // Model
+  if (ctx.model) {
+    const modelStr = truncateToWidth(ctx.model, Math.max(0, width - 8), "…");
+    lines.push(dim("  ◈ ") + fg(COLORS.accent, modelStr));
+  }
+
+  // Context usage
+  if (ctx.contextPercent !== null) {
+    const pct = ctx.contextPercent.toFixed(1) + "%";
+    const win = ctx.contextWindow !== null ? ` / ${formatK(ctx.contextWindow)}` : "";
+    lines.push(dim(`  ctx `) + fg(COLORS.header, pct) + dim(win));
+  }
+
+  // MCP servers
+  if (ctx.mcpServers !== null) {
+    const { connected, total } = ctx.mcpServers;
+    const color = connected === total ? COLORS.success : COLORS.warning;
+    lines.push(dim("  MCP ") + fg(color, `${connected}/${total}`) + dim(" servers"));
+  }
+
   return lines;
+}
+
+function formatK(n: number): string {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
+  if (n >= 1000) return Math.round(n / 1000) + "k";
+  return String(n);
 }
