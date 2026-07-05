@@ -40,7 +40,8 @@ export class SidebarCompositor {
     const terminal = this.terminal;
     const sw = this.sidebarWidth;
 
-    // Make pi think the terminal is narrower so it renders in the left portion only
+    // Make pi think the terminal is narrower so it renders in the left portion only.
+    // +1 for the separator column between main content and sidebar.
     Object.defineProperty(terminal, "columns", {
       configurable: true,
       enumerable: true,
@@ -48,7 +49,7 @@ export class SidebarCompositor {
         const raw = origDesc?.get
           ? origDesc.get.call(terminal)
           : (typeof origDesc?.value === "number" ? origDesc.value : 80);
-        return Math.max(1, raw - sw);
+        return Math.max(1, raw - sw - 1);
       },
     });
 
@@ -75,7 +76,9 @@ export class SidebarCompositor {
     if (this.disposed) return;
     const rawRows = this.terminal.rows;
     const rawCols = this.getRawColumns();
-    const sidebarCol = rawCols - this.sidebarWidth + 1;
+    // separator at rawCols - sidebarWidth, sidebar starts 1 col after
+    const sepCol = rawCols - this.sidebarWidth;
+    const sidebarCol = sepCol + 1;
     const ctx = this.getCtx();
     const lines = renderSidebar(ctx, this.sidebarWidth);
 
@@ -83,6 +86,10 @@ export class SidebarCompositor {
     buf += "\x1b[?7l";       // disable auto-wrap
 
     for (let row = 1; row <= rawRows; row++) {
+      // Draw separator
+      buf += moveCursor(row, sepCol);
+      buf += "\x1b[2m│\x1b[0m"; // dim vertical bar
+      // Draw sidebar content
       const line = lines[row - 1];
       buf += moveCursor(row, sidebarCol);
       buf += line !== undefined

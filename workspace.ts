@@ -13,7 +13,7 @@ let cache: { data: WorkspaceData; timestamp: number } | null = null;
 
 function run(cmd: string, cwd: string): string {
   try {
-    return execSync(cmd, { cwd, encoding: "utf-8", timeout: 2000 }).trim();
+    return execSync(cmd, { cwd, encoding: "utf-8", timeout: 2000, stdio: ["ignore", "pipe", "ignore"] }).trim();
   } catch {
     return "";
   }
