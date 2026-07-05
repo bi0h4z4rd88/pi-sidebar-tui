@@ -5,6 +5,7 @@ import type { SidebarContext, TodoItem, SubagentEntry, WorkspaceFile } from "../
 import { renderSessionPanel } from "../panels/session.ts";
 import { renderTodosPanel } from "../panels/todos.ts";
 import { renderSubagentsPanel } from "../panels/subagents.ts";
+import { renderWorkspacePanel } from "../panels/workspace.ts";
 
 function strip(s: string): string {
   return s.replace(/\x1b\[[0-9;]*m/g, "");
@@ -239,6 +240,71 @@ test("subagents panel: no line exceeds width", () => {
     })],
   });
   const lines = renderSubagentsPanel(ctx, 30);
+  for (const line of lines) {
+    assert.ok(visibleWidth(strip(line)) <= 30, `line too wide: "${strip(line)}"`);
+  }
+});
+
+// ─── Workspace panel ──────────────────────────────────────────────────────────
+
+test("workspace panel: no git repo shows message", () => {
+  const ctx = makeCtx({ branch: null, workspaceFiles: [] });
+  const text = renderWorkspacePanel(ctx, 40).map(strip).join("\n");
+  assert.ok(text.includes("not a git repo"), `got: ${text}`);
+});
+
+test("workspace panel: clean repo shows (clean)", () => {
+  const ctx = makeCtx({ branch: "main", workspaceFiles: [] });
+  const text = renderWorkspacePanel(ctx, 40).map(strip).join("\n");
+  assert.ok(text.includes("clean"), `got: ${text}`);
+});
+
+test("workspace panel: additions-only shows +N not -0", () => {
+  const ctx = makeCtx({
+    branch: "main",
+    workspaceFiles: [{ path: "src/foo.ts", added: 29, removed: 0 }],
+  });
+  const text = renderWorkspacePanel(ctx, 40).map(strip).join("\n");
+  assert.ok(text.includes("+29"), `missing +29, got: ${text}`);
+  assert.ok(!text.includes("-0"), `unexpected -0, got: ${text}`);
+});
+
+test("workspace panel: additions and deletions shows +N -M", () => {
+  const ctx = makeCtx({
+    branch: "main",
+    workspaceFiles: [{ path: "src/bar.ts", added: 12, removed: 3 }],
+  });
+  const text = renderWorkspacePanel(ctx, 40).map(strip).join("\n");
+  assert.ok(text.includes("+12"), `missing +12, got: ${text}`);
+  assert.ok(text.includes("-3"), `missing -3, got: ${text}`);
+});
+
+test("workspace panel: 16 files capped to 15", () => {
+  const files: WorkspaceFile[] = Array.from({ length: 16 }, (_, i) => ({
+    path: `src/file${i}.ts`,
+    added: 1,
+    removed: 0,
+  }));
+  const ctx = makeCtx({ branch: "main", workspaceFiles: files });
+  const lines = renderWorkspacePanel(ctx, 50);
+  const fileLines = lines.filter(l => strip(l).includes("src/file"));
+  assert.equal(fileLines.length, 15, `expected 15 file lines, got ${fileLines.length}`);
+});
+
+test("workspace panel: header contains branch name", () => {
+  const ctx = makeCtx({ branch: "feature/my-branch", workspaceFiles: [] });
+  const header = strip(renderWorkspacePanel(ctx, 60)[0]);
+  assert.ok(header.includes("feature/my-branch"), `branch missing from header: "${header}"`);
+});
+
+test("workspace panel: no line exceeds width", () => {
+  const ctx = makeCtx({
+    branch: "very-long-branch-name-that-is-quite-wordy",
+    aheadCount: 99,
+    untrackedCount: 99,
+    workspaceFiles: [{ path: "src/" + "a".repeat(80) + ".ts", added: 999, removed: 999 }],
+  });
+  const lines = renderWorkspacePanel(ctx, 30);
   for (const line of lines) {
     assert.ok(visibleWidth(strip(line)) <= 30, `line too wide: "${strip(line)}"`);
   }
