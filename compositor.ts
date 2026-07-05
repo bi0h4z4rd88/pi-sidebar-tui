@@ -1,4 +1,4 @@
-import { truncateToWidth } from "@earendil-works/pi-tui";
+import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import type { SidebarContext } from "./types.ts";
 import { renderSidebar } from "./sidebar.ts";
 
@@ -85,14 +85,27 @@ export class SidebarCompositor {
     buf += "\x1b7";          // save cursor (DECSC)
     buf += "\x1b[?7l";       // disable auto-wrap
 
+    // Format cwd for bottom row: collapse home dir, truncate from left if needed
+    const cwd = ctx.cwd ?? "";
+    const home = process.env["HOME"] ?? "";
+    const cwdDisplay = home && cwd.startsWith(home) ? "~" + cwd.slice(home.length) : cwd;
+    const cwdLine = "\x1b[2m" + (visibleWidth(cwdDisplay) > this.sidebarWidth
+      ? "…" + cwdDisplay.slice(-(this.sidebarWidth - 1))
+      : cwdDisplay) + "\x1b[0m";
+
     for (let row = 1; row <= rawRows; row++) {
       buf += moveCursor(row, sepCol);
       buf += "\x1b[2m│\x1b[0m";
-      const line = lines[row - 1];
       buf += moveCursor(row, sidebarCol);
-      buf += line !== undefined
-        ? truncateToWidth(line, this.sidebarWidth, "", true)
-        : " ".repeat(this.sidebarWidth);
+      if (row === rawRows && cwd) {
+        // Bottom row: current path
+        buf += truncateToWidth(cwdLine, this.sidebarWidth, "", true);
+      } else {
+        const line = lines[row - 1];
+        buf += line !== undefined
+          ? truncateToWidth(line, this.sidebarWidth, "", true)
+          : " ".repeat(this.sidebarWidth);
+      }
     }
 
     buf += "\x1b[?7h";       // enable auto-wrap
