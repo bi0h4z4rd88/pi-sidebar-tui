@@ -4,6 +4,7 @@ import { visibleWidth } from "@earendil-works/pi-tui";
 import type { SidebarContext, TodoItem, SubagentEntry, WorkspaceFile } from "../types.ts";
 import { renderSessionPanel } from "../panels/session.ts";
 import { renderTodosPanel } from "../panels/todos.ts";
+import { renderSubagentsPanel } from "../panels/subagents.ts";
 
 function strip(s: string): string {
   return s.replace(/\x1b\[[0-9;]*m/g, "");
@@ -119,5 +120,126 @@ test("todos panel: no line exceeds width", () => {
   const lines = renderTodosPanel(ctx, 20);
   for (const line of lines) {
     assert.ok(visibleWidth(strip(line)) <= 20, `line too wide: "${strip(line)}"`);
+  }
+});
+
+// ─── Subagents panel ──────────────────────────────────────────────────────────
+
+function makeAgent(overrides: Partial<SubagentEntry> = {}): SubagentEntry {
+  return {
+    id: "a1",
+    name: "test-agent",
+    status: "running",
+    startedAt: Date.now() - 3000,
+    turns: 1,
+    toolCount: 2,
+    tokens: 8000,
+    toolLog: [],
+    ...overrides,
+  };
+}
+
+test("subagents panel: empty shows (no subagents)", () => {
+  const lines = renderSubagentsPanel(makeCtx({ subagents: [] }), 60);
+  assert.ok(lines.map(strip).join("\n").includes("no subagents"));
+});
+
+test("subagents panel: running agent has no checkmark", () => {
+  const ctx = makeCtx({ subagents: [makeAgent({ status: "running" })] });
+  const text = renderSubagentsPanel(ctx, 60).map(strip).join("\n");
+  assert.ok(!text.includes("✓"), `unexpected ✓ in running agent output`);
+  assert.ok(text.includes("running"), `missing "running" status`);
+});
+
+test("subagents panel: completed agent shows checkmark", () => {
+  const ctx = makeCtx({
+    subagents: [makeAgent({
+      status: "completed",
+      startedAt: Date.now() - 8000,
+      completedAt: Date.now(),
+      turns: 3, toolCount: 12, tokens: 45000,
+    })],
+  });
+  const text = renderSubagentsPanel(ctx, 60).map(strip).join("\n");
+  assert.ok(text.includes("✓"), "missing ✓ for completed agent");
+  assert.ok(text.includes("complete"), `missing "complete" status`);
+});
+
+test("subagents panel: completed meta line includes duration", () => {
+  const ctx = makeCtx({
+    subagents: [makeAgent({
+      status: "completed",
+      startedAt: Date.now() - 8000,
+      completedAt: Date.now(),
+      turns: 3, toolCount: 12, tokens: 45000,
+    })],
+  });
+  const text = renderSubagentsPanel(ctx, 60).map(strip).join("\n");
+  assert.ok(text.includes("3 turns"), `missing turns in meta`);
+  assert.ok(text.includes("12 tools"), `missing tools in meta`);
+});
+
+test("subagents panel: running meta line has no duration suffix", () => {
+  const ctx = makeCtx({
+    subagents: [makeAgent({
+      status: "running",
+      startedAt: Date.now() - 3000,
+      turns: 1, toolCount: 2, tokens: 8000,
+    })],
+  });
+  const lines = renderSubagentsPanel(ctx, 60);
+  const metaLine = lines.map(strip).find(l => l.includes("turns") && l.includes("tools"));
+  assert.ok(metaLine !== undefined, "no meta line found");
+  // Duration suffix (e.g. "· 3s") should NOT appear in meta for running agents
+  // The status line shows "running (3s)" instead
+  assert.ok(!metaLine.match(/·\s+\d+s$/), `unexpected duration suffix in running meta: "${metaLine}"`);
+});
+
+test("subagents panel: parallel label only with 2+ running", () => {
+  const running1 = makeAgent({ id: "a1", name: "agent-1", status: "running" });
+  const running2 = makeAgent({ id: "a2", name: "agent-2", status: "running" });
+  const done = makeAgent({ id: "a3", name: "agent-3", status: "completed", completedAt: Date.now() });
+
+  const oneRunning = makeCtx({ subagents: [running1, done] });
+  assert.ok(
+    !renderSubagentsPanel(oneRunning, 60).map(strip).join("\n").includes("parallel"),
+    "parallel shown with only 1 running"
+  );
+
+  const twoRunning = makeCtx({ subagents: [running1, running2] });
+  assert.ok(
+    renderSubagentsPanel(twoRunning, 60).map(strip).join("\n").includes("parallel"),
+    "parallel not shown with 2 running"
+  );
+});
+
+test("subagents panel: tool log shows at most 3 lines", () => {
+  const ctx = makeCtx({
+    subagents: [makeAgent({
+      status: "running",
+      toolLog: ["read: a.ts", "bash: ls", "write: b.ts", "bash: git status"],
+    })],
+  });
+  const lines = renderSubagentsPanel(ctx, 60);
+  const toolLines = lines.filter(l => {
+    const t = strip(l).trim();
+    return t.includes(":") && (
+      t.startsWith("read") || t.startsWith("bash") ||
+      t.startsWith("write") || t.startsWith("edit")
+    );
+  });
+  assert.equal(toolLines.length, 3, `expected 3 tool lines, got ${toolLines.length}`);
+});
+
+test("subagents panel: no line exceeds width", () => {
+  const ctx = makeCtx({
+    subagents: [makeAgent({
+      name: "a".repeat(80),
+      toolLog: ["read: " + "b".repeat(80)],
+    })],
+  });
+  const lines = renderSubagentsPanel(ctx, 30);
+  for (const line of lines) {
+    assert.ok(visibleWidth(strip(line)) <= 30, `line too wide: "${strip(line)}"`);
   }
 });
