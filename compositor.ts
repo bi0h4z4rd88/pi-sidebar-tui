@@ -53,7 +53,7 @@ export class SidebarCompositor {
       enumerable: true,
       get() {
         const raw = process.stdout.columns ?? 80;
-        const sw = Math.min(35, Math.floor(raw / 3));
+        const sw = Math.min(40, Math.floor(raw / 3));
         return Math.max(1, raw - sw - 1);
       },
     });
