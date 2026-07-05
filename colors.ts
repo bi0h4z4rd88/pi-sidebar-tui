@@ -1,5 +1,3 @@
-import { visibleWidth } from "@earendil-works/pi-tui";
-
 const RESET = "\x1b[0m";
 const BOLD = "\x1b[1m";
 const DIM_CODE = "\x1b[2m";
