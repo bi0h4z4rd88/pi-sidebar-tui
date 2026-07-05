@@ -62,7 +62,7 @@ export function formatDiffStat(added: number, removed: number): string {
 export function panelHeader(title: string, width: number): string[] {
   const separatorLen = Math.max(0, width);
   return [
-    bold(title),
+    bold(` ${title}`),
     dim("─".repeat(separatorLen)),
   ];
 }
