@@ -36,11 +36,14 @@ export class SidebarCompositor {
   }
 
   private getRawColumns(): number {
-    // Read directly from the TTY handle — bypasses any property descriptor overrides
-    try {
-      const h = (this.terminal as any)._handle ?? (process.stdout as any)._handle;
-      if (h?.getWindowSize) return h.getWindowSize()[0];
-    } catch {}
+    // Walk the prototype chain of process.stdout to find the columns getter.
+    // This bypasses any instance-level override we installed on tui.terminal.
+    let proto = Object.getPrototypeOf(process.stdout);
+    while (proto) {
+      const d = Object.getOwnPropertyDescriptor(proto, "columns");
+      if (d?.get) return (d.get.call(process.stdout) as number) ?? 80;
+      proto = Object.getPrototypeOf(proto);
+    }
     return 80;
   }
 
@@ -57,15 +60,15 @@ export class SidebarCompositor {
       configurable: true,
       enumerable: true,
       get() {
-        try {
-          const h = (terminal as any)._handle ?? (process.stdout as any)._handle;
-          if (h?.getWindowSize) {
-            const raw = h.getWindowSize()[0];
-            const sw = Math.min(45, Math.floor(raw / 3));
-            return Math.max(1, raw - sw - 1);
-          }
-        } catch {}
-        return 80;
+        let proto = Object.getPrototypeOf(process.stdout);
+        let raw = 80;
+        while (proto) {
+          const d = Object.getOwnPropertyDescriptor(proto, "columns");
+          if (d?.get) { raw = (d.get.call(process.stdout) as number) ?? 80; break; }
+          proto = Object.getPrototypeOf(proto);
+        }
+        const sw = Math.min(45, Math.floor(raw / 3));
+        return Math.max(1, raw - sw - 1);
       },
     });
 
