@@ -13,6 +13,12 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
     lines.push(dim(`  ${truncated}`));
   }
 
+  // Session elapsed time
+  const elapsed = Date.now() - ctx.sessionStartMs;
+  if (elapsed >= 1000) {
+    lines.push(dim("  ⏱ " + formatDuration(elapsed)));
+  }
+
   lines.push("");
 
   // Model + thinking level
@@ -50,4 +56,13 @@ function formatK(n: number): string {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
   if (n >= 1000) return Math.round(n / 1000) + "k";
   return String(n);
+}
+
+function formatDuration(ms: number): string {
+  const s = Math.floor(ms / 1000);
+  const m = Math.floor(s / 60);
+  const h = Math.floor(m / 60);
+  if (h > 0) return `${h}h${m % 60}m`;
+  if (m > 0) return `${m}m${s % 60}s`;
+  return `${s}s`;
 }

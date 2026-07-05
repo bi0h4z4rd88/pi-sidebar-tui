@@ -51,5 +51,6 @@ export interface SidebarContext {
   contextWindow: number | null;
   tokensIn: number;
   tokensOut: number;
+  sessionStartMs: number;
   mcpServers: McpServerInfo[];
 }

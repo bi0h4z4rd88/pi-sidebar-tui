@@ -28,6 +28,7 @@ function makeCtx(overrides: Partial<SidebarContext> = {}): SidebarContext {
     contextWindow: null,
     tokensIn: 0,
     tokensOut: 0,
+    sessionStartMs: Date.now(),
     mcpServers: [],
     ...overrides,
   };

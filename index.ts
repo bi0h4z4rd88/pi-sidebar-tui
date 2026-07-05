@@ -24,7 +24,9 @@ let contextPercent: number | null = null;
 let contextWindow: number | null = null;
 let tokensIn = 0;
 let tokensOut = 0;
+let sessionStartMs = Date.now();
 let mcpServers: McpServerInfo[] = [];
+let sessionTimerHandle: ReturnType<typeof setInterval> | null = null;
 
 function inferThinkingLevel(sm: any): string | null {
   try {
@@ -81,6 +83,7 @@ function buildSidebarContext(cwd: string | undefined): SidebarContext {
     contextWindow,
     tokensIn,
     tokensOut,
+    sessionStartMs,
     mcpServers,
   };
 }
@@ -151,6 +154,9 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
     contextPercent = null;
     contextWindow = null;
     mcpServers = getMcpServers();
+    sessionStartMs = Date.now();
+    if (sessionTimerHandle) { clearInterval(sessionTimerHandle); sessionTimerHandle = null; }
+    sessionTimerHandle = setInterval(() => requestRender?.(), 30_000);
     // Seed token totals from existing session entries (handles resume)
     { let inSum = 0, outSum = 0;
       for (const e of (ctx.sessionManager.getBranch?.() ?? [])) {
@@ -224,6 +230,7 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
   });
 
   pi.on("session_shutdown", async () => {
+    if (sessionTimerHandle) { clearInterval(sessionTimerHandle); sessionTimerHandle = null; }
     tokensIn = 0;
     tokensOut = 0;
     sessionTitle = null;
