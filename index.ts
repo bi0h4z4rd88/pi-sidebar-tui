@@ -18,6 +18,7 @@ let todos: TodoItem[] = [];
 const subagentsMap = new Map<string, SubagentEntry>();
 let activeSubagentId: string | null = null;
 let currentModel: string | null = null;
+let thinkingLevel: string | null = null;
 let contextTokens: number | null = null;
 let contextPercent: number | null = null;
 let contextWindow: number | null = null;
@@ -59,6 +60,7 @@ function buildSidebarContext(cwd: string | undefined): SidebarContext {
     workspaceFiles: ws.files,
     cwd,
     model: currentModel,
+    thinkingLevel,
     contextTokens,
     contextPercent,
     contextWindow,
@@ -129,6 +131,7 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
     subagentsMap.clear();
     activeSubagentId = null;
     currentModel = null;
+    thinkingLevel = null;
     contextTokens = null;
     contextPercent = null;
     contextWindow = null;
@@ -147,6 +150,7 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
     invalidateWorkspaceCache();
     currentCwd = (ctx as any).cwd;
     updateContextUsage(ctx);
+    thinkingLevel = pi.getThinkingLevel?.() ?? null;
 
     const hasUI = (ctx as any).hasUI;
     if (!hasUI) return;
@@ -324,6 +328,11 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
     if (m?.name) currentModel = m.name;
     else if (m?.id) currentModel = m.id;
     updateContextUsage(ctx);
+    requestRender?.();
+  });
+
+  pi.on("thinking_level_select", async (event) => {
+    thinkingLevel = (event as any).level ?? null;
     requestRender?.();
   });
 

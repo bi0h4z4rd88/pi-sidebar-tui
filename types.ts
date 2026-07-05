@@ -45,6 +45,7 @@ export interface SidebarContext {
   workspaceFiles: WorkspaceFile[];
   cwd: string | undefined;
   model: string | null;
+  thinkingLevel: string | null;
   contextTokens: number | null;
   contextPercent: number | null;
   contextWindow: number | null;

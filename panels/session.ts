@@ -15,10 +15,16 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
 
   lines.push("");
 
-  // Model
+  // Model + thinking level
   if (ctx.model) {
-    const modelStr = truncateToWidth(ctx.model, Math.max(0, width - 8), "…");
-    lines.push(dim("  ◈ ") + fg(COLORS.accent, modelStr));
+    const thinkSuffix = ctx.thinkingLevel && ctx.thinkingLevel !== "off"
+      ? dim(` · think:${ctx.thinkingLevel}`)
+      : "";
+    const suffixLen = ctx.thinkingLevel && ctx.thinkingLevel !== "off"
+      ? ` · think:${ctx.thinkingLevel}`.length
+      : 0;
+    const modelStr = truncateToWidth(ctx.model, Math.max(0, width - 6 - suffixLen), "…");
+    lines.push(dim("  ◈ ") + fg(COLORS.accent, modelStr) + thinkSuffix);
   }
 
   // Context usage: nb_ctx / max_ctx (pct%)
