@@ -105,7 +105,7 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
   let requestRender: (() => void) | null = null;
 
   pi.on("session_start", async (_event, ctx) => {
-    sessionTitle = null;
+    sessionTitle = ctx.sessionManager.getSessionName() ?? null;
     todos = [];
     subagentsMap.clear();
     activeSubagentId = null;
@@ -164,6 +164,12 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
         render(_width: number): string[] { return []; },
       };
     }, { placement: "belowEditor" });
+  });
+
+  pi.on("session_info_changed", async (event, _ctx) => {
+    const name = (event as any).name;
+    sessionTitle = typeof name === "string" ? name : null;
+    requestRender?.();
   });
 
   pi.on("session_shutdown", async () => {
