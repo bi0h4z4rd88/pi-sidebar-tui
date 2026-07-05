@@ -92,7 +92,7 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
     const myRender = scheduleRender;
     requestRender = myRender;
 
-    ui.setWidget("opencode-sidebar", (tui: any, _theme: any) => {
+    ui.setWidget("powerline-sidebar", (tui: any, _theme: any) => {
       tuiRef = tui;
       return {
         dispose() { if (requestRender === myRender) { requestRender = null; tuiRef = null; } },
@@ -102,7 +102,7 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
           return renderSidebar(buildSidebarContext(currentCwd), sidebarWidth);
         },
       };
-    }, { placement: "belowEditor" });
+    });
   });
 
   pi.on("session_shutdown", async () => {
