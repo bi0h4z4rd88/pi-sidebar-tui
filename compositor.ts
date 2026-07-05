@@ -45,6 +45,7 @@ export class SidebarCompositor {
     const lines = renderSidebar(ctx, this.sidebarWidth);
 
     let buf = "\x1b[?2026h"; // begin synchronized output
+    buf += "\x1b7";          // save cursor (DECSC)
     buf += "\x1b[?7l";       // disable auto-wrap
 
     for (let row = 1; row <= rawRows; row++) {
@@ -58,6 +59,7 @@ export class SidebarCompositor {
     }
 
     buf += "\x1b[?7h";       // enable auto-wrap
+    buf += "\x1b8";          // restore cursor (DECRC)
     buf += "\x1b[?2026l";    // end synchronized output
 
     this.originalWrite(buf);
