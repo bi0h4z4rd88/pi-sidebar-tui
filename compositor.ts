@@ -22,28 +22,35 @@ function descriptorFor(obj: object, key: string): PropertyDescriptor | undefined
 export class SidebarCompositor {
   private tui: any;
   private terminal: any;
-  private sidebarWidth: number;
   private getCtx: () => SidebarContext;
   private originalColumnsDesc: PropertyDescriptor | undefined;
   private originalDoRender: (() => void) | null = null;
   private originalWrite: (data: string) => void;
   private disposed = false;
 
-  constructor(tui: any, sidebarWidth: number, getCtx: () => SidebarContext) {
+  constructor(tui: any, getCtx: () => SidebarContext) {
     this.tui = tui;
     this.terminal = tui.terminal;
-    this.sidebarWidth = sidebarWidth;
     this.getCtx = getCtx;
     this.originalWrite = this.terminal.write.bind(this.terminal);
   }
 
+  private getRawColumns(): number {
+    const d = this.originalColumnsDesc;
+    if (d?.get) return d.get.call(this.terminal);
+    if (typeof d?.value === "number") return d.value;
+    return 80;
+  }
+
+  private get sidebarWidth(): number {
+    return Math.floor(this.getRawColumns() / 3);
+  }
+
   install(): void {
-    // Narrow terminal.columns so pi renders content in the left portion only.
-    // The separator + sidebar occupy the right (sidebarWidth + 1) columns.
+    // Narrow terminal.columns so pi renders in the left 2/3 only.
     this.originalColumnsDesc = descriptorFor(this.terminal, "columns");
     const origDesc = this.originalColumnsDesc;
     const terminal = this.terminal;
-    const sw = this.sidebarWidth;
 
     Object.defineProperty(terminal, "columns", {
       configurable: true,
@@ -52,6 +59,7 @@ export class SidebarCompositor {
         const raw = origDesc?.get
           ? origDesc.get.call(terminal)
           : (typeof origDesc?.value === "number" ? origDesc.value : 80);
+        const sw = Math.floor(raw / 3);
         return Math.max(1, raw - sw - 1);
       },
     });
@@ -68,21 +76,15 @@ export class SidebarCompositor {
     }
   }
 
-  private getRawColumns(): number {
-    const d = this.originalColumnsDesc;
-    if (d?.get) return d.get.call(this.terminal);
-    if (typeof d?.value === "number") return d.value;
-    return 80;
-  }
-
   paint(): void {
     if (this.disposed) return;
     const rawRows = this.terminal.rows;
     const rawCols = this.getRawColumns();
-    const sepCol = rawCols - this.sidebarWidth;
+    const sw = this.sidebarWidth;
+    const sepCol = rawCols - sw;
     const sidebarCol = sepCol + 1;
     const ctx = this.getCtx();
-    const lines = renderSidebar(ctx, this.sidebarWidth);
+    const lines = renderSidebar(ctx, sw);
 
     let buf = "\x1b[?2026h"; // begin synchronized output
     buf += "\x1b7";          // save cursor (DECSC)
@@ -92,8 +94,8 @@ export class SidebarCompositor {
     const cwd = ctx.cwd ?? "";
     const home = process.env["HOME"] ?? "";
     const cwdDisplay = home && cwd.startsWith(home) ? "~" + cwd.slice(home.length) : cwd;
-    const cwdLine = "\x1b[2m " + (visibleWidth(cwdDisplay) > this.sidebarWidth - 1
-      ? "…" + cwdDisplay.slice(-(this.sidebarWidth - 2))
+    const cwdLine = "\x1b[2m " + (visibleWidth(cwdDisplay) > sw - 1
+      ? "…" + cwdDisplay.slice(-(sw - 2))
       : cwdDisplay) + "\x1b[22;23;24;39m"; // selective reset, preserves bg for padding spaces
 
     for (let row = 1; row <= rawRows; row++) {
@@ -102,12 +104,12 @@ export class SidebarCompositor {
       buf += moveCursor(row, sidebarCol);
       buf += SIDEBAR_BG;
       if (row === rawRows && cwd) {
-        buf += truncateToWidth(cwdLine, this.sidebarWidth, "", true);
+        buf += truncateToWidth(cwdLine, sw, "", true);
       } else {
         const line = lines[row - 1];
         buf += line !== undefined
-          ? truncateToWidth(line, this.sidebarWidth, "", true)
-          : " ".repeat(this.sidebarWidth);
+          ? truncateToWidth(line, sw, "", true)
+          : " ".repeat(sw);
       }
       buf += BG_RESET;
     }

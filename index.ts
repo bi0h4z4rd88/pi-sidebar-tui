@@ -5,14 +5,12 @@ import { getWorkspaceData, invalidateWorkspaceCache } from "./workspace.ts";
 import { SidebarCompositor } from "./compositor.ts";
 import { getMcpServers } from "./mcp.ts";
 
-const SIDEBAR_WIDTH = 45;
 const TOOL_LOG_MAX = 10;
 const SUBAGENT_TOOL_PATTERN = /^(task|dispatch|agent)/i;
 const TODO_TOOL_PATTERN = /todo/i;
 const WRITE_TOOLS = new Set(["write", "edit", "bash", "computer"]);
 
 let sidebarEnabled = true;
-let sidebarWidth = SIDEBAR_WIDTH;
 let sessionTitle: string | null = null;
 let todos: TodoItem[] = [];
 const subagentsMap = new Map<string, SubagentEntry>();
@@ -222,7 +220,6 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
       if (sidebarEnabled) {
         const comp = new SidebarCompositor(
           tui,
-          sidebarWidth,
           () => buildSidebarContext(currentCwd),
         );
         comp.install();
@@ -407,14 +404,6 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
         sidebarEnabled = true;
       } else if (trimmed === "off") {
         sidebarEnabled = false;
-      } else if (trimmed.startsWith("width ")) {
-        const n = parseInt(trimmed.slice(6), 10);
-        if (!isNaN(n) && n >= 10 && n <= 120) {
-          sidebarWidth = n;
-        } else {
-          (ctx as any).ui?.notify?.("Usage: /sidebar-tui width <10-120>", "warning");
-          return;
-        }
       } else {
         sidebarEnabled = !sidebarEnabled;
       }
