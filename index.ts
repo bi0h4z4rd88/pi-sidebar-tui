@@ -2,6 +2,7 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import type { TodoItem, SubagentEntry, SidebarContext } from "./types.ts";
 import { renderSidebar } from "./sidebar.ts";
 import { getWorkspaceData, invalidateWorkspaceCache } from "./workspace.ts";
+import { SidebarCompositor } from "./compositor.ts";
 
 const SIDEBAR_WIDTH = 36;
 const TOOL_LOG_MAX = 10;
@@ -83,26 +84,46 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
     const ui = (ctx as any).ui;
     let renderTick = 0;
     let tuiRef: any = null;
+    let compositorRef: SidebarCompositor | null = null;
+
     const scheduleRender = () => {
       const tick = ++renderTick;
       setTimeout(() => {
-        if (tick === renderTick) tuiRef?.requestRender();
+        if (tick === renderTick) {
+          if (compositorRef) {
+            compositorRef.paint();
+          } else {
+            tuiRef?.requestRender();
+          }
+        }
       }, 16);
     };
     const myRender = scheduleRender;
     requestRender = myRender;
 
-    ui.setWidget("powerline-sidebar", (tui: any, _theme: any) => {
+    ui.setWidget("opencode-sidebar", (tui: any, _theme: any) => {
       tuiRef = tui;
+
+      if (sidebarEnabled) {
+        const comp = new SidebarCompositor(
+          tui,
+          sidebarWidth,
+          () => buildSidebarContext(currentCwd),
+        );
+        comp.install();
+        compositorRef = comp;
+      }
+
       return {
-        dispose() { if (requestRender === myRender) { requestRender = null; tuiRef = null; } },
-        invalidate() {},
-        render(_width: number): string[] {
-          if (!sidebarEnabled) return [];
-          return renderSidebar(buildSidebarContext(currentCwd), sidebarWidth);
+        dispose() {
+          if (requestRender === myRender) { requestRender = null; tuiRef = null; }
+          compositorRef?.dispose();
+          compositorRef = null;
         },
+        invalidate() {},
+        render(_width: number): string[] { return []; },
       };
-    });
+    }, { placement: "belowEditor" });
   });
 
   pi.on("session_shutdown", async () => {
