@@ -26,6 +26,21 @@ let tokensIn = 0;
 let tokensOut = 0;
 let mcpServers: McpServerInfo[] = [];
 
+function inferThinkingLevel(sm: any): string | null {
+  try {
+    const entries: any[] = sm.getBranch?.() ?? [];
+    for (let i = entries.length - 1; i >= 0; i--) {
+      const e = entries[i];
+      if (e?.type === "thinking_level_change" && typeof e.thinkingLevel === "string") {
+        return e.thinkingLevel;
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
 function inferSessionTitle(sm: any): string | null {
   try {
     const entries: any[] = sm.getBranch?.() ?? [];
@@ -150,7 +165,8 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
     invalidateWorkspaceCache();
     currentCwd = (ctx as any).cwd;
     updateContextUsage(ctx);
-    thinkingLevel = pi.getThinkingLevel?.() ?? null;
+    // Prefer live API; fall back to last thinking_level_change entry in history
+    thinkingLevel = pi.getThinkingLevel?.() ?? inferThinkingLevel(ctx.sessionManager) ?? null;
 
     const hasUI = (ctx as any).hasUI;
     if (!hasUI) return;
