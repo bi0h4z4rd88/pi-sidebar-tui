@@ -27,6 +27,8 @@ export class SidebarCompositor {
   private originalColumnsDesc: PropertyDescriptor | undefined;
   private originalDoRender: (() => void) | null = null;
   private originalWrite: (data: string) => void;
+  private originalTerminalWriteFn: ((data: string) => void) | null = null;
+  private writeDebounceHandle: ReturnType<typeof setTimeout> | null = null;
   private disposed = false;
 
   constructor(tui: any, sidebarWidth: number, getCtx: () => SidebarContext) {
@@ -55,6 +57,20 @@ export class SidebarCompositor {
         return Math.max(1, raw - sw - 1);
       },
     });
+
+    // Repaint sidebar after any terminal write (catches streaming output).
+    // paint() uses this.originalWrite directly so no recursion.
+    this.originalTerminalWriteFn = this.terminal.write;
+    const self = this;
+    this.terminal.write = function (data: string) {
+      self.originalWrite(data);
+      if (self.disposed) return;
+      if (self.writeDebounceHandle) clearTimeout(self.writeDebounceHandle);
+      self.writeDebounceHandle = setTimeout(() => {
+        self.writeDebounceHandle = null;
+        if (!self.disposed) self.paint();
+      }, 16);
+    };
 
     // Paint sidebar after every pi render cycle
     if (typeof this.tui.doRender === "function") {
@@ -122,6 +138,15 @@ export class SidebarCompositor {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+
+    if (this.writeDebounceHandle) {
+      clearTimeout(this.writeDebounceHandle);
+      this.writeDebounceHandle = null;
+    }
+    if (this.originalTerminalWriteFn) {
+      this.terminal.write = this.originalTerminalWriteFn;
+      this.originalTerminalWriteFn = null;
+    }
 
     if (this.originalColumnsDesc) {
       Object.defineProperty(this.terminal, "columns", this.originalColumnsDesc);
