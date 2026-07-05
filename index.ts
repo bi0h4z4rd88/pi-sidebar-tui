@@ -82,23 +82,27 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
 
     const ui = (ctx as any).ui;
     let renderTick = 0;
+    let tuiRef: any = null;
     const scheduleRender = () => {
       const tick = ++renderTick;
       setTimeout(() => {
-        if (tick === renderTick) ui.requestRender?.();
+        if (tick === renderTick) tuiRef?.requestRender();
       }, 16);
     };
     const myRender = scheduleRender;
     requestRender = myRender;
 
-    ui.setWidget("opencode-sidebar", (_tui: any, _theme: any) => ({
-      dispose() { if (requestRender === myRender) requestRender = null; },
-      invalidate() {},
-      render(_width: number): string[] {
-        if (!sidebarEnabled) return [];
-        return renderSidebar(buildSidebarContext(currentCwd), sidebarWidth);
-      },
-    }), { placement: "belowEditor" });
+    ui.setWidget("opencode-sidebar", (tui: any, _theme: any) => {
+      tuiRef = tui;
+      return {
+        dispose() { if (requestRender === myRender) { requestRender = null; tuiRef = null; } },
+        invalidate() {},
+        render(_width: number): string[] {
+          if (!sidebarEnabled) return [];
+          return renderSidebar(buildSidebarContext(currentCwd), sidebarWidth);
+        },
+      };
+    }, { placement: "belowEditor" });
   });
 
   pi.on("session_shutdown", async () => {
@@ -170,7 +174,7 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
 
     if (subagentsMap.has(toolCallId)) {
       const entry = subagentsMap.get(toolCallId)!;
-      entry.status = (event as any).error ? "failed" : "completed";
+      entry.status = (event as any).isError ? "failed" : "completed";
       entry.completedAt = Date.now();
       if (activeSubagentId === toolCallId) {
         activeSubagentId = null;
