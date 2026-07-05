@@ -29,13 +29,6 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
     lines.push(dim(`  ctx `) + fg(COLORS.header, `${tokens} / ${win}`) + dim(` (${pct})`));
   }
 
-  // MCP servers
-  if (ctx.mcpServers !== null) {
-    const { connected, total } = ctx.mcpServers;
-    const color = connected === total ? COLORS.success : COLORS.warning;
-    lines.push(dim("  MCP ") + fg(color, `${connected}/${total}`) + dim(" servers"));
-  }
-
   return lines;
 }
 

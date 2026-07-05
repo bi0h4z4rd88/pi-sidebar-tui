@@ -1,8 +1,9 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import type { TodoItem, SubagentEntry, SidebarContext } from "./types.ts";
+import type { TodoItem, SubagentEntry, SidebarContext, McpServerInfo } from "./types.ts";
 import { renderSidebar } from "./sidebar.ts";
 import { getWorkspaceData, invalidateWorkspaceCache } from "./workspace.ts";
 import { SidebarCompositor } from "./compositor.ts";
+import { getMcpServers } from "./mcp.ts";
 
 const SIDEBAR_WIDTH = 36;
 const TOOL_LOG_MAX = 10;
@@ -20,7 +21,7 @@ let currentModel: string | null = null;
 let contextTokens: number | null = null;
 let contextPercent: number | null = null;
 let contextWindow: number | null = null;
-let mcpServers: { connected: number; total: number } | null = null;
+let mcpServers: McpServerInfo[] = [];
 
 function buildSidebarContext(cwd: string | undefined): SidebarContext {
   const ws = getWorkspaceData(cwd);
@@ -52,14 +53,6 @@ function updateContextUsage(ctx: any): void {
     const model = ctx.model;
     if (model?.name) currentModel = model.name;
     else if (model?.id) currentModel = model.id;
-
-    // MCP: try untyped access
-    const raw = (ctx as any).mcpServers ?? (ctx as any).mcp?.servers ?? null;
-    if (Array.isArray(raw)) {
-      const total = raw.length;
-      const connected = raw.filter((s: any) => s?.connected || s?.status === "connected").length;
-      mcpServers = { connected, total };
-    }
   } catch {
     // ignore
   }
@@ -113,7 +106,7 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
     contextTokens = null;
     contextPercent = null;
     contextWindow = null;
-    mcpServers = null;
+    mcpServers = getMcpServers();
     invalidateWorkspaceCache();
     currentCwd = (ctx as any).cwd;
     updateContextUsage(ctx);

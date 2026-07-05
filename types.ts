@@ -27,6 +27,13 @@ export interface WorkspaceFile {
   removed: number;
 }
 
+export interface McpServerInfo {
+  name: string;
+  toolCount: number;
+  tokenEstimate: number;
+  connected: boolean;
+}
+
 export interface SidebarContext {
   sessionTitle: string | null;
   todos: TodoItem[];
@@ -40,5 +47,5 @@ export interface SidebarContext {
   contextTokens: number | null;
   contextPercent: number | null;
   contextWindow: number | null;
-  mcpServers: { connected: number; total: number } | null;
+  mcpServers: McpServerInfo[];
 }
