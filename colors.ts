@@ -1,4 +1,5 @@
-const RESET = "\x1b[0m";
+// Selective reset: clears bold/dim/italic/underline/fg but NOT background
+const RESET = "\x1b[22;23;24;39m";
 const BOLD = "\x1b[1m";
 const DIM_CODE = "\x1b[2m";
 

@@ -2,6 +2,10 @@ import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import type { SidebarContext } from "./types.ts";
 import { renderSidebar } from "./sidebar.ts";
 
+// Dark navy-indigo: subtle, distinct from pure-black terminal bg, complements cyan/amber/green text
+const SIDEBAR_BG = "\x1b[48;2;16;18;30m";
+const BG_RESET = "\x1b[49m";
+
 function moveCursor(row: number, col: number): string {
   return `\x1b[${row};${col}H`;
 }
@@ -91,14 +95,14 @@ export class SidebarCompositor {
     const cwdDisplay = home && cwd.startsWith(home) ? "~" + cwd.slice(home.length) : cwd;
     const cwdLine = "\x1b[2m" + (visibleWidth(cwdDisplay) > this.sidebarWidth
       ? "…" + cwdDisplay.slice(-(this.sidebarWidth - 1))
-      : cwdDisplay) + "\x1b[0m";
+      : cwdDisplay) + BG_RESET;
 
     for (let row = 1; row <= rawRows; row++) {
       buf += moveCursor(row, sepCol);
       buf += "\x1b[2m│\x1b[0m";
       buf += moveCursor(row, sidebarCol);
+      buf += SIDEBAR_BG;
       if (row === rawRows && cwd) {
-        // Bottom row: current path
         buf += truncateToWidth(cwdLine, this.sidebarWidth, "", true);
       } else {
         const line = lines[row - 1];
@@ -106,6 +110,7 @@ export class SidebarCompositor {
           ? truncateToWidth(line, this.sidebarWidth, "", true)
           : " ".repeat(this.sidebarWidth);
       }
+      buf += BG_RESET;
     }
 
     buf += "\x1b[?7h";       // enable auto-wrap
