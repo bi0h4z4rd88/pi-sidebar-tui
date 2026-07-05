@@ -17,6 +17,7 @@ let todos: TodoItem[] = [];
 const subagentsMap = new Map<string, SubagentEntry>();
 let activeSubagentId: string | null = null;
 let currentModel: string | null = null;
+let contextTokens: number | null = null;
 let contextPercent: number | null = null;
 let contextWindow: number | null = null;
 let mcpServers: { connected: number; total: number } | null = null;
@@ -33,6 +34,7 @@ function buildSidebarContext(cwd: string | undefined): SidebarContext {
     workspaceFiles: ws.files,
     cwd,
     model: currentModel,
+    contextTokens,
     contextPercent,
     contextWindow,
     mcpServers,
@@ -43,6 +45,7 @@ function updateContextUsage(ctx: any): void {
   try {
     const usage = ctx.getContextUsage?.();
     if (usage) {
+      contextTokens = typeof usage.tokens === "number" ? usage.tokens : null;
       contextPercent = typeof usage.percent === "number" ? usage.percent : null;
       contextWindow = typeof usage.contextWindow === "number" ? usage.contextWindow : null;
     }
@@ -107,6 +110,7 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
     subagentsMap.clear();
     activeSubagentId = null;
     currentModel = null;
+    contextTokens = null;
     contextPercent = null;
     contextWindow = null;
     mcpServers = null;

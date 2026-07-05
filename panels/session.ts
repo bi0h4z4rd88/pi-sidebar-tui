@@ -21,11 +21,12 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
     lines.push(dim("  ◈ ") + fg(COLORS.accent, modelStr));
   }
 
-  // Context usage
+  // Context usage: nb_ctx / max_ctx (pct%)
   if (ctx.contextPercent !== null) {
     const pct = ctx.contextPercent.toFixed(1) + "%";
-    const win = ctx.contextWindow !== null ? ` / ${formatK(ctx.contextWindow)}` : "";
-    lines.push(dim(`  ctx `) + fg(COLORS.header, pct) + dim(win));
+    const tokens = ctx.contextTokens !== null ? formatK(ctx.contextTokens) : "?";
+    const win = ctx.contextWindow !== null ? formatK(ctx.contextWindow) : "?";
+    lines.push(dim(`  ctx `) + fg(COLORS.header, `${tokens} / ${win}`) + dim(` (${pct})`));
   }
 
   // MCP servers
