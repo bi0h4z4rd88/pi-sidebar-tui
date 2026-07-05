@@ -150,7 +150,7 @@ function extractSubagentName(input: unknown): string {
 }
 
 export default function opencodesSidebar(pi: ExtensionAPI) {
-  let currentCwd: string | undefined;
+  let currentCwd: string | undefined = process.cwd();
   let requestRender: (() => void) | null = null;
 
   pi.on("session_start", async (_event, ctx) => {
