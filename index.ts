@@ -23,6 +23,28 @@ let contextPercent: number | null = null;
 let contextWindow: number | null = null;
 let mcpServers: McpServerInfo[] = [];
 
+function inferSessionTitle(sm: any): string | null {
+  try {
+    const entries: any[] = sm.getBranch?.() ?? [];
+    for (const e of entries) {
+      if (e?.type !== "message") continue;
+      const msg = e.message;
+      if (msg?.role !== "user") continue;
+      const content = msg.content;
+      const text = typeof content === "string"
+        ? content
+        : Array.isArray(content)
+          ? content.find((c: any) => c?.type === "text")?.text ?? ""
+          : "";
+      const trimmed = text.trim().replace(/\s+/g, " ");
+      if (trimmed) return trimmed.slice(0, 60);
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
 function buildSidebarContext(cwd: string | undefined): SidebarContext {
   const ws = getWorkspaceData(cwd);
   return {
@@ -98,7 +120,7 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
   let requestRender: (() => void) | null = null;
 
   pi.on("session_start", async (_event, ctx) => {
-    sessionTitle = ctx.sessionManager.getSessionName() ?? null;
+    sessionTitle = ctx.sessionManager.getSessionName() ?? inferSessionTitle(ctx.sessionManager) ?? null;
     todos = [];
     subagentsMap.clear();
     activeSubagentId = null;
