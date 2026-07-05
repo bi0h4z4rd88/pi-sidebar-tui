@@ -2,7 +2,7 @@ import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import type { SidebarContext } from "./types.ts";
 import { renderSidebar } from "./sidebar.ts";
 
-const SIDEBAR_BG = "\x1b[48;2;232;232;232m"; // light gray
+const SIDEBAR_BG = "\x1b[48;2;16;18;30m"; // dark navy-indigo
 const BG_RESET = "\x1b[49m";
 
 function moveCursor(row: number, col: number): string {
