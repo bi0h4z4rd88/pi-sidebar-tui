@@ -59,7 +59,7 @@ export class SidebarCompositor {
         const raw = origDesc?.get
           ? origDesc.get.call(terminal)
           : (typeof origDesc?.value === "number" ? origDesc.value : 80);
-        const sw = Math.min(40, Math.floor(raw / 3));
+        const sw = Math.min(35, Math.floor(raw / 3));
         return Math.max(1, raw - sw - 1);
       },
     });
