@@ -11,8 +11,8 @@ function buildGitStatus(branch: string, ahead: number, untracked: number): strin
 }
 
 function renderWorkspaceHeader(ctx: SidebarContext, width: number): string[] {
-  const left = bold("Workspace");
-  const leftPlain = "Workspace";
+  const left = bold(" Workspace");
+  const leftPlain = " Workspace";
 
   if (!ctx.branch) {
     return [left, dim("─".repeat(Math.max(0, width)))];

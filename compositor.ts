@@ -92,8 +92,8 @@ export class SidebarCompositor {
     const cwd = ctx.cwd ?? "";
     const home = process.env["HOME"] ?? "";
     const cwdDisplay = home && cwd.startsWith(home) ? "~" + cwd.slice(home.length) : cwd;
-    const cwdLine = "\x1b[2m" + (visibleWidth(cwdDisplay) > this.sidebarWidth
-      ? "…" + cwdDisplay.slice(-(this.sidebarWidth - 1))
+    const cwdLine = "\x1b[2m " + (visibleWidth(cwdDisplay) > this.sidebarWidth - 1
+      ? "…" + cwdDisplay.slice(-(this.sidebarWidth - 2))
       : cwdDisplay) + "\x1b[22;23;24;39m"; // selective reset, preserves bg for padding spaces
 
     for (let row = 1; row <= rawRows; row++) {
