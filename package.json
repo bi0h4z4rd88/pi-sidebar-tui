@@ -1,0 +1,34 @@
+{
+  "name": "pi-sidebar-tui",
+  "version": "0.1.0",
+  "description": "OpenCode-style sidebar TUI extension for pi coding agent",
+  "type": "module",
+  "files": [
+    "*.ts",
+    "panels/**/*.ts"
+  ],
+  "keywords": [
+    "pi-package",
+    "pi",
+    "coding-agent",
+    "sidebar",
+    "tui"
+  ],
+  "license": "MIT",
+  "scripts": {
+    "test": "node --experimental-strip-types --test 'tests/**/*.test.ts'"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": ">=0.74.0",
+    "@earendil-works/pi-tui": ">=0.74.0"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "^0.80.3",
+    "@earendil-works/pi-tui": "^0.80.3"
+  },
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}
