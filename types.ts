@@ -51,6 +51,11 @@ export interface SidebarContext {
   contextWindow: number | null;
   tokensIn: number;
   tokensOut: number;
+  cacheRead: number;
+  sessionCost: number;
+  turnCount: number;
+  activeTool: { name: string; startedAt: number } | null;
+  autoCompactEnabled: boolean | null;
   sessionStartMs: number;
   mcpServers: McpServerInfo[];
 }

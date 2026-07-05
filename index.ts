@@ -24,6 +24,11 @@ let contextPercent: number | null = null;
 let contextWindow: number | null = null;
 let tokensIn = 0;
 let tokensOut = 0;
+let cacheRead = 0;
+let sessionCost = 0;
+let turnCount = 0;
+let activeTool: { name: string; startedAt: number } | null = null;
+let autoCompactEnabled: boolean | null = null;
 let sessionStartMs = Date.now();
 let mcpServers: McpServerInfo[] = [];
 let sessionTimerHandle: ReturnType<typeof setInterval> | null = null;
@@ -83,6 +88,11 @@ function buildSidebarContext(cwd: string | undefined): SidebarContext {
     contextWindow,
     tokensIn,
     tokensOut,
+    cacheRead,
+    sessionCost,
+    turnCount,
+    activeTool,
+    autoCompactEnabled,
     sessionStartMs,
     mcpServers,
   };
@@ -157,16 +167,24 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
     sessionStartMs = Date.now();
     if (sessionTimerHandle) { clearInterval(sessionTimerHandle); sessionTimerHandle = null; }
     sessionTimerHandle = setInterval(() => requestRender?.(), 30_000);
-    // Seed token totals from existing session entries (handles resume)
-    { let inSum = 0, outSum = 0;
+    activeTool = null;
+    turnCount = 0;
+    autoCompactEnabled = (ctx as any).settingsManager?.getCompactionSettings?.()?.enabled ?? null;
+    // Seed usage totals from existing session entries (handles resume)
+    { let inSum = 0, outSum = 0, cacheSum = 0, costSum = 0, turns = 0;
       for (const e of (ctx.sessionManager.getBranch?.() ?? [])) {
         const m = (e as any).message;
-        if ((e as any).type !== "message" || m?.role !== "assistant") continue;
+        if ((e as any).type !== "message") continue;
+        if (m?.role === "user") { turns++; continue; }
+        if (m?.role !== "assistant") continue;
         if (m?.stopReason === "error" || m?.stopReason === "aborted") continue;
         inSum += m.usage?.input ?? 0;
         outSum += m.usage?.output ?? 0;
+        cacheSum += m.usage?.cacheRead ?? 0;
+        costSum += m.usage?.cost?.total ?? 0;
       }
-      tokensIn = inSum; tokensOut = outSum;
+      tokensIn = inSum; tokensOut = outSum; cacheRead = cacheSum; sessionCost = costSum;
+      turnCount = turns;
     }
     invalidateWorkspaceCache();
     currentCwd = (ctx as any).cwd;
@@ -233,6 +251,10 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
     if (sessionTimerHandle) { clearInterval(sessionTimerHandle); sessionTimerHandle = null; }
     tokensIn = 0;
     tokensOut = 0;
+    cacheRead = 0;
+    sessionCost = 0;
+    turnCount = 0;
+    activeTool = null;
     sessionTitle = null;
     todos = [];
     subagentsMap.clear();
@@ -319,6 +341,8 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
       if (stopReason !== "error" && stopReason !== "aborted") {
         tokensIn += usage.input ?? 0;
         tokensOut += usage.output ?? 0;
+        cacheRead += usage.cacheRead ?? 0;
+        sessionCost += usage.cost?.total ?? 0;
       }
     }
     if (activeSubagentId) {
@@ -337,6 +361,8 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
     currentCwd = (ctx as any).cwd;
     updateContextUsage(ctx);
     invalidateWorkspaceCache();
+    turnCount++;
+    activeTool = null;
     requestRender?.();
   });
 
@@ -352,6 +378,17 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
     if (m?.name) currentModel = m.name;
     else if (m?.id) currentModel = m.id;
     updateContextUsage(ctx);
+    requestRender?.();
+  });
+
+  pi.on("tool_execution_start", async (event) => {
+    const name = (event as any).toolName ?? "";
+    activeTool = { name, startedAt: Date.now() };
+    requestRender?.();
+  });
+
+  pi.on("tool_execution_end", async () => {
+    activeTool = null;
     requestRender?.();
   });
 
