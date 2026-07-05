@@ -29,7 +29,8 @@ export interface WorkspaceFile {
 
 export interface McpServerInfo {
   name: string;
-  toolCount: number;
+  directCount: number;
+  totalCount: number;
   tokenEstimate: number;
   connected: boolean;
 }

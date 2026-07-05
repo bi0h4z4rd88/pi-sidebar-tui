@@ -8,21 +8,24 @@ export function renderMcpPanel(ctx: SidebarContext, width: number): string[] {
   const lines: string[] = [...panelHeader("MCP Servers", width)];
 
   for (const srv of servers) {
-    const dot = srv.connected ? fg(COLORS.success, "●") : fg(COLORS.warning, "○");
-    const tokens = formatTokens(srv.tokenEstimate);
-    const count = String(srv.toolCount);
-    // right-align: name · count · ~tokens
-    const suffix = `  ${count}  ~${tokens}`;
-    const nameMax = Math.max(0, width - 4 - suffix.length);
-    const name = srv.name.length > nameMax ? srv.name.slice(0, nameMax - 1) + "…" : srv.name;
-    lines.push(dim("  ") + dot + " " + fg(COLORS.accent, name) + dim(suffix));
+    const dot = srv.connected
+      ? (srv.directCount === srv.totalCount && srv.totalCount > 0
+          ? fg(COLORS.success, "●")
+          : fg(COLORS.warning, "◐"))
+      : dim("○");
+
+    const countStr = srv.totalCount > 0 ? `${srv.directCount}/${srv.totalCount}` : "";
+    const tokenStr = srv.directCount > 0 ? `  ~${srv.tokenEstimate.toLocaleString()}` : "";
+    const suffix = dim(`  ${countStr}${tokenStr}`);
+    const suffixVisibleLen = 2 + countStr.length + (srv.directCount > 0 ? 2 + String(srv.tokenEstimate.toLocaleString()).length + 1 : 0);
+
+    const nameMax = Math.max(0, width - 4 - suffixVisibleLen);
+    const name = srv.name.length > nameMax
+      ? srv.name.slice(0, nameMax - 1) + "…"
+      : srv.name;
+
+    lines.push(dim("  ") + dot + " " + fg(COLORS.accent, name) + suffix);
   }
 
   return lines;
-}
-
-function formatTokens(n: number): string {
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
-  if (n >= 1000) return (n / 1000).toFixed(1) + "k";
-  return String(n);
 }
