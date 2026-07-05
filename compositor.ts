@@ -36,30 +36,24 @@ export class SidebarCompositor {
   }
 
   private getRawColumns(): number {
-    const d = this.originalColumnsDesc;
-    if (d?.get) return d.get.call(this.terminal);
-    if (typeof d?.value === "number") return d.value;
-    return 80;
+    return process.stdout.columns ?? 80;
   }
 
   private get sidebarWidth(): number {
-    return Math.floor(this.getRawColumns() / 3);
+    return Math.min(35, Math.floor(this.getRawColumns() / 3));
   }
 
   install(): void {
-    // Narrow terminal.columns so pi renders in the left 2/3 only.
+    // Narrow terminal.columns so pi renders in the left portion only.
     this.originalColumnsDesc = descriptorFor(this.terminal, "columns");
-    const origDesc = this.originalColumnsDesc;
     const terminal = this.terminal;
 
     Object.defineProperty(terminal, "columns", {
       configurable: true,
       enumerable: true,
       get() {
-        const raw = origDesc?.get
-          ? origDesc.get.call(terminal)
-          : (typeof origDesc?.value === "number" ? origDesc.value : 80);
-        const sw = Math.min(5, Math.floor(raw / 3));
+        const raw = process.stdout.columns ?? 80;
+        const sw = Math.min(35, Math.floor(raw / 3));
         return Math.max(1, raw - sw - 1);
       },
     });
