@@ -88,10 +88,11 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
         if (tick === renderTick) ui.requestRender?.();
       }, 16);
     };
-    requestRender = scheduleRender;
+    const myRender = scheduleRender;
+    requestRender = myRender;
 
     ui.setWidget("opencode-sidebar", (_tui: any, _theme: any) => ({
-      dispose() { requestRender = null; },
+      dispose() { if (requestRender === myRender) requestRender = null; },
       invalidate() {},
       render(_width: number): string[] {
         if (!sidebarEnabled) return [];
