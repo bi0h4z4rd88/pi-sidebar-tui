@@ -5,7 +5,7 @@ import { getWorkspaceData, invalidateWorkspaceCache } from "./workspace.ts";
 import { SidebarCompositor } from "./compositor.ts";
 import { getMcpServers } from "./mcp.ts";
 
-const SIDEBAR_WIDTH = 36;
+const SIDEBAR_WIDTH = 45;
 const TOOL_LOG_MAX = 10;
 const SUBAGENT_TOOL_PATTERN = /^(task|dispatch|agent)/i;
 const TODO_TOOL_PATTERN = /todo/i;
