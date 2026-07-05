@@ -166,7 +166,8 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
     currentCwd = (ctx as any).cwd;
     updateContextUsage(ctx);
     // Prefer live API; fall back to last thinking_level_change entry in history
-    thinkingLevel = pi.getThinkingLevel?.() ?? inferThinkingLevel(ctx.sessionManager) ?? null;
+    // Session history is authoritative for resumed sessions; fall back to live API
+    thinkingLevel = inferThinkingLevel(ctx.sessionManager) ?? pi.getThinkingLevel?.() ?? null;
 
     const hasUI = (ctx as any).hasUI;
     if (!hasUI) return;
