@@ -36,10 +36,12 @@ export class SidebarCompositor {
   }
 
   private getRawColumns(): number {
-    const d = this.originalColumnsDesc;
-    if (d?.get) return d.get.call(this.terminal);
-    if (typeof d?.value === "number") return d.value;
-    return process.stdout.columns ?? 80;
+    // Read directly from the TTY handle — bypasses any property descriptor overrides
+    try {
+      const h = (this.terminal as any)._handle ?? (process.stdout as any)._handle;
+      if (h?.getWindowSize) return h.getWindowSize()[0];
+    } catch {}
+    return 80;
   }
 
   private get sidebarWidth(): number {
@@ -49,18 +51,21 @@ export class SidebarCompositor {
   install(): void {
     // Narrow terminal.columns so pi renders in the left portion only.
     this.originalColumnsDesc = descriptorFor(this.terminal, "columns");
-    const origDesc = this.originalColumnsDesc;
     const terminal = this.terminal;
 
     Object.defineProperty(terminal, "columns", {
       configurable: true,
       enumerable: true,
       get() {
-        const raw = origDesc?.get
-          ? origDesc.get.call(terminal)
-          : (typeof origDesc?.value === "number" ? origDesc.value : process.stdout.columns ?? 80);
-        const sw = Math.min(45, Math.floor(raw / 3));
-        return Math.max(1, raw - sw - 1);
+        try {
+          const h = (terminal as any)._handle ?? (process.stdout as any)._handle;
+          if (h?.getWindowSize) {
+            const raw = h.getWindowSize()[0];
+            const sw = Math.min(45, Math.floor(raw / 3));
+            return Math.max(1, raw - sw - 1);
+          }
+        } catch {}
+        return 80;
       },
     });
 
