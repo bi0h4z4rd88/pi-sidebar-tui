@@ -35,40 +35,21 @@ export class SidebarCompositor {
     this.originalWrite = this.terminal.write.bind(this.terminal);
   }
 
-  private getRawColumns(): number {
-    // Walk the prototype chain of process.stdout to find the columns getter.
-    // This bypasses any instance-level override we installed on tui.terminal.
-    let proto = Object.getPrototypeOf(process.stdout);
-    while (proto) {
-      const d = Object.getOwnPropertyDescriptor(proto, "columns");
-      if (d?.get) return (d.get.call(process.stdout) as number) ?? 80;
-      proto = Object.getPrototypeOf(proto);
-    }
-    return 80;
-  }
-
-  private get sidebarWidth(): number {
-    return Math.min(35, Math.floor(this.getRawColumns() / 3));
-  }
+  private readonly sidebarWidth = 36;
 
   install(): void {
     // Narrow terminal.columns so pi renders in the left portion only.
     this.originalColumnsDesc = descriptorFor(this.terminal, "columns");
+    const origDesc = this.originalColumnsDesc;
     const terminal = this.terminal;
 
     Object.defineProperty(terminal, "columns", {
       configurable: true,
       enumerable: true,
       get() {
-        let proto = Object.getPrototypeOf(process.stdout);
-        let raw = 80;
-        while (proto) {
-          const d = Object.getOwnPropertyDescriptor(proto, "columns");
-          if (d?.get) { raw = (d.get.call(process.stdout) as number) ?? 80; break; }
-          proto = Object.getPrototypeOf(proto);
-        }
-        const sw = Math.min(45, Math.floor(raw / 3));
-        return Math.max(1, raw - sw - 1);
+        const d = origDesc;
+        const raw = d?.get ? (d.get.call(terminal) ?? 80) : (typeof d?.value === "number" ? d.value : 80);
+        return Math.max(1, raw - 36 - 1);
       },
     });
 
@@ -87,7 +68,8 @@ export class SidebarCompositor {
   paint(): void {
     if (this.disposed) return;
     const rawRows = this.terminal.rows;
-    const rawCols = this.getRawColumns();
+    const d = this.originalColumnsDesc;
+    const rawCols = d?.get ? (d.get.call(this.terminal) ?? 80) : (typeof d?.value === "number" ? d.value : 80);
     const sw = this.sidebarWidth;
     const sepCol = rawCols - sw;
     const sidebarCol = sepCol + 1;
