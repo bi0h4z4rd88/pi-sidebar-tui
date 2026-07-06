@@ -52,10 +52,15 @@ export interface SidebarContext {
   tokensIn: number;
   tokensOut: number;
   cacheRead: number;
+  cacheWrite: number;
   sessionCost: number;
   turnCount: number;
   activeTool: { name: string; startedAt: number } | null;
   autoCompactEnabled: boolean | null;
   sessionStartMs: number;
   mcpServers: McpServerInfo[];
+  modelProvider: string | null;
+  agentStartMs: number | null;
+  streamingOut: number;
+  lastTurnMs: number | null;
 }

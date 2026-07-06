@@ -29,7 +29,7 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
     lines.push("");
   }
 
-  // Model + thinking level
+  // Model + thinking level + provider
   if (ctx.model) {
     const thinkSuffix = ctx.thinkingLevel && ctx.thinkingLevel !== "off"
       ? dim(` · think:${ctx.thinkingLevel}`)
@@ -39,6 +39,9 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
       : 0;
     const modelStr = truncateToWidth(ctx.model, Math.max(0, width - 6 - suffixLen), "…");
     lines.push(dim("  ◈ ") + fg(COLORS.accent, modelStr) + thinkSuffix);
+    if (ctx.modelProvider) {
+      lines.push(dim(`  via ${ctx.modelProvider}`));
+    }
   }
 
   // Context usage: nb_ctx / max_ctx (pct%)
@@ -58,6 +61,20 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
     }
   }
 
+  // Live TPS during streaming
+  if (ctx.agentStartMs !== null && ctx.streamingOut > 0) {
+    const elapsedSec = (Date.now() - ctx.agentStartMs) / 1000;
+    const tps = elapsedSec > 0 ? Math.round(ctx.streamingOut / elapsedSec) : 0;
+    if (tps > 0) {
+      lines.push(fg(COLORS.success, `  ~${tps} tok/s`));
+    }
+  }
+
+  // Last turn latency
+  if (ctx.lastTurnMs !== null && ctx.agentStartMs === null) {
+    lines.push(dim("  last ") + fg(COLORS.muted, formatDuration(ctx.lastTurnMs)));
+  }
+
   // Token in / out + cost
   if (ctx.tokensIn > 0 || ctx.tokensOut > 0) {
     const costStr = ctx.sessionCost > 0 ? dim(`  $${ctx.sessionCost.toFixed(3)}`) : "";
@@ -66,6 +83,12 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
       dim("  ↓") + fg(COLORS.muted, formatK(ctx.tokensOut)) +
       costStr
     );
+  }
+
+  // Session token total
+  const tokenTotal = ctx.tokensIn + ctx.tokensOut + ctx.cacheRead + ctx.cacheWrite;
+  if (tokenTotal > 0) {
+    lines.push(dim("  Σ ") + fg(COLORS.muted, formatK(tokenTotal)));
   }
 
   // Cache efficiency + turn count

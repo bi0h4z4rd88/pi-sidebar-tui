@@ -29,12 +29,17 @@ function makeCtx(overrides: Partial<SidebarContext> = {}): SidebarContext {
     tokensIn: 0,
     tokensOut: 0,
     cacheRead: 0,
+    cacheWrite: 0,
     sessionCost: 0,
     turnCount: 0,
     activeTool: null,
     autoCompactEnabled: null,
     sessionStartMs: Date.now(),
     mcpServers: [],
+    modelProvider: null,
+    agentStartMs: null,
+    streamingOut: 0,
+    lastTurnMs: null,
     ...overrides,
   };
 }
