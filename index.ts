@@ -53,12 +53,14 @@ function inferThinkingLevel(sm: any): string | null {
 }
 
 const FILLER_PREFIX = /^(can you |could you |please |i want you to |i'd like you to |i need you to |help me |i need to |let's |let us )+/i;
+// Strips "use a subagent to", "create a script that", "run a tool for", etc. — keeps the actual goal
+const METHOD_WRAPPER = /^(use|create|run|make|build|write|add|generate|implement|spawn|start)\s+(?:(?:a|an|the|some|my|one)\s+)?(?:\w+\s+){0,3}(?:to|that|which|for)\s+/i;
 
 function summarizePrompt(raw: string): string {
-  // Use first non-empty line, strip filler openers, capitalize
   const firstLine = raw.split("\n").map(l => l.trim()).find(l => l.length > 0) ?? raw.trim();
-  const stripped = firstLine.replace(FILLER_PREFIX, "").trim();
-  const title = stripped.charAt(0).toUpperCase() + stripped.slice(1);
+  const noFiller = firstLine.replace(FILLER_PREFIX, "").trim();
+  const noWrapper = noFiller.replace(METHOD_WRAPPER, "").trim();
+  const title = noWrapper.charAt(0).toUpperCase() + noWrapper.slice(1);
   return title.slice(0, 60);
 }
 
