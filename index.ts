@@ -479,12 +479,16 @@ export default function piSidebar(pi: ExtensionAPI) {
   });
 
   pi.registerCommand("sidebar-tui", {
-    description: "Toggle sidebar (on, off, toggle)",
+    description: "Toggle sidebar on or off (usage: /sidebar-tui on | off)",
     handler: async (args, ctx) => {
       currentCwd = (ctx as any).cwd;
       const trimmed = args?.trim() ?? "";
+      if (trimmed !== "on" && trimmed !== "off") {
+        (ctx as any).ui?.notify?.("Usage: /sidebar-tui on | off", "warning");
+        return;
+      }
 
-      const wantEnabled = trimmed === "on" ? true : trimmed === "off" ? false : !sidebarEnabled;
+      const wantEnabled = trimmed === "on";
       sidebarEnabled = wantEnabled;
 
       if (!sidebarEnabled) {

@@ -16,7 +16,7 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
   // Session elapsed time
   const elapsed = Date.now() - ctx.sessionStartMs;
   if (elapsed >= 1000) {
-    lines.push(dim("  ⏱ " + formatDuration(elapsed)));
+    lines.push(dim("  time  ") + fg(COLORS.muted, formatDuration(elapsed)));
   }
 
   lines.push("");
@@ -24,12 +24,12 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
   // Active tool (live, shown when agent is running)
   if (ctx.activeTool) {
     const toolElapsed = Date.now() - ctx.activeTool.startedAt;
-    const toolName = truncateToWidth(ctx.activeTool.name, Math.max(0, width - 10), "…");
-    lines.push(fg(COLORS.warning, "  ⚙ ") + fg(COLORS.accent, toolName) + dim(` (${formatDuration(toolElapsed)})`));
+    const toolName = truncateToWidth(ctx.activeTool.name, Math.max(0, width - 14), "…");
+    lines.push(dim("  tool  ") + fg(COLORS.accent, toolName) + dim(` (${formatDuration(toolElapsed)})`));
     lines.push("");
   }
 
-  // Model + thinking level + provider
+  // Model + thinking level
   if (ctx.model) {
     const thinkSuffix = ctx.thinkingLevel && ctx.thinkingLevel !== "off"
       ? dim(` · think:${ctx.thinkingLevel}`)
@@ -37,65 +37,60 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
     const suffixLen = ctx.thinkingLevel && ctx.thinkingLevel !== "off"
       ? ` · think:${ctx.thinkingLevel}`.length
       : 0;
-    const modelStr = truncateToWidth(ctx.model, Math.max(0, width - 6 - suffixLen), "…");
-    lines.push(dim("  ◈ ") + fg(COLORS.accent, modelStr) + thinkSuffix);
+    const modelStr = truncateToWidth(ctx.model, Math.max(0, width - 10 - suffixLen), "…");
+    lines.push(dim("  model ") + fg(COLORS.accent, modelStr) + thinkSuffix);
   }
 
-  // Context usage: nb_ctx / max_ctx (pct%)
+  // Context usage
   if (ctx.contextPercent !== null) {
     const pct = ctx.contextPercent;
     const pctStr = pct.toFixed(1) + "%";
     const tokens = ctx.contextTokens !== null ? formatK(ctx.contextTokens) : "?";
     const win = ctx.contextWindow !== null ? formatK(ctx.contextWindow) : "?";
     const ctxColor = pct > 90 ? COLORS.warning : pct > 70 ? COLORS.accent : COLORS.header;
-    lines.push(dim(`  ctx `) + fg(ctxColor, `${tokens} / ${win}`) + dim(` (${pctStr})`));
+    lines.push(dim("  ctx   ") + fg(ctxColor, `${tokens} / ${win}`) + dim(` (${pctStr})`));
 
-    // Compaction indicator
     if (ctx.autoCompactEnabled !== null) {
       const compactColor = pct > 70 ? COLORS.warning : COLORS.muted;
-      const label = ctx.autoCompactEnabled ? "⚡ auto-compact on" : "⚡ auto-compact off";
+      const label = ctx.autoCompactEnabled ? "auto-compact on" : "auto-compact off";
       lines.push(dim("  ") + fg(compactColor, label));
     }
   }
 
-  // Session avg tok/s + last turn latency
+  // Speed + last turn latency
   const avgTps = ctx.modelGenerationMs > 0
     ? Math.round(ctx.modelTokensOut / (ctx.modelGenerationMs / 1000))
     : null;
-  if (avgTps !== null || ctx.lastTurnMs !== null) {
-    const parts: string[] = [];
-    if (avgTps !== null) parts.push(dim("  ~") + fg(COLORS.muted, `${avgTps} tok/s`));
-    if (ctx.lastTurnMs !== null) parts.push(dim("  last ") + fg(COLORS.muted, formatDuration(ctx.lastTurnMs)));
-    lines.push(parts.join(""));
+  if (avgTps !== null) {
+    lines.push(dim("  speed ") + fg(COLORS.muted, `${avgTps} tok/s`));
+  }
+  if (ctx.lastTurnMs !== null) {
+    lines.push(dim("  last  ") + fg(COLORS.muted, formatDuration(ctx.lastTurnMs)));
   }
 
-  // Token in / out + cost
+  // Tokens in / out + cost
   if (ctx.tokensIn > 0 || ctx.tokensOut > 0) {
-    const costStr = ctx.sessionCost > 0 ? dim(`  $${ctx.sessionCost.toFixed(3)}`) : "";
-    lines.push(
-      dim("  ↑") + fg(COLORS.muted, formatK(ctx.tokensIn)) +
-      dim("  ↓") + fg(COLORS.muted, formatK(ctx.tokensOut)) +
-      costStr
-    );
+    lines.push(dim("  in    ") + fg(COLORS.muted, formatK(ctx.tokensIn)));
+    lines.push(dim("  out   ") + fg(COLORS.muted, formatK(ctx.tokensOut)));
+    if (ctx.sessionCost > 0) {
+      lines.push(dim("  cost  ") + fg(COLORS.muted, `$${ctx.sessionCost.toFixed(3)}`));
+    }
   }
 
   // Session token total
   const tokenTotal = ctx.tokensIn + ctx.tokensOut + ctx.cacheRead + ctx.cacheWrite;
   if (tokenTotal > 0) {
-    lines.push(dim("  Σ ") + fg(COLORS.muted, formatK(tokenTotal)));
+    lines.push(dim("  total ") + fg(COLORS.muted, formatK(tokenTotal)));
   }
 
   // Cache efficiency + turn count
   const totalIn = ctx.tokensIn + ctx.cacheRead;
   const cacheHitPct = totalIn > 0 ? Math.round((ctx.cacheRead / totalIn) * 100) : null;
-  const hasCacheInfo = cacheHitPct !== null && cacheHitPct > 0;
-  const hasTurns = ctx.turnCount > 0;
-
-  if (hasCacheInfo || hasTurns) {
-    const parts: string[] = [];
-    if (hasCacheInfo) parts.push(dim("  ↩") + fg(COLORS.muted, `${cacheHitPct}%`));
-    if (hasTurns) parts.push(dim(`  ${ctx.turnCount} turn${ctx.turnCount === 1 ? "" : "s"}`));
-    lines.push(parts.join(""));
+  if (cacheHitPct !== null && cacheHitPct > 0) {
+    lines.push(dim("  cache ") + fg(COLORS.muted, `${cacheHitPct}%`));
+  }
+  if (ctx.turnCount > 0) {
+    lines.push(dim("  turns ") + fg(COLORS.muted, String(ctx.turnCount)));
   }
 
   return lines;
