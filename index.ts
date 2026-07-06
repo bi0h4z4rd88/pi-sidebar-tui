@@ -52,6 +52,16 @@ function inferThinkingLevel(sm: any): string | null {
   return null;
 }
 
+const FILLER_PREFIX = /^(can you |could you |please |i want you to |i'd like you to |i need you to |help me |i need to |let's |let us )+/i;
+
+function summarizePrompt(raw: string): string {
+  // Use first non-empty line, strip filler openers, capitalize
+  const firstLine = raw.split("\n").map(l => l.trim()).find(l => l.length > 0) ?? raw.trim();
+  const stripped = firstLine.replace(FILLER_PREFIX, "").trim();
+  const title = stripped.charAt(0).toUpperCase() + stripped.slice(1);
+  return title.slice(0, 60);
+}
+
 function inferSessionTitle(sm: any): string | null {
   try {
     const entries: any[] = sm.getBranch?.() ?? [];
@@ -65,8 +75,7 @@ function inferSessionTitle(sm: any): string | null {
         : Array.isArray(content)
           ? content.find((c: any) => c?.type === "text")?.text ?? ""
           : "";
-      const trimmed = text.trim().replace(/\s+/g, " ");
-      if (trimmed) return trimmed.slice(0, 60);
+      if (text.trim()) return summarizePrompt(text);
     }
   } catch {
     // ignore
@@ -279,7 +288,7 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
   pi.on("before_agent_start", async (event, ctx) => {
     currentCwd = (ctx as any).cwd;
     if (sessionTitle === null && typeof (event as any).prompt === "string") {
-      sessionTitle = (event as any).prompt.slice(0, 60);
+      sessionTitle = summarizePrompt((event as any).prompt);
     }
     updateContextUsage(ctx);
     requestRender?.();
