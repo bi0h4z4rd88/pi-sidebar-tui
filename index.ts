@@ -11,6 +11,7 @@ const TODO_TOOL_PATTERN = /todo/i;
 const WRITE_TOOLS = new Set(["write", "edit", "bash", "computer"]);
 
 let sidebarEnabled = true;
+let sidebarWidth = 40;
 let sessionTitle: string | null = null;
 let todos: TodoItem[] = [];
 const subagentsMap = new Map<string, SubagentEntry>();
@@ -268,6 +269,7 @@ export default function piSidebar(pi: ExtensionAPI) {
         const comp = new SidebarCompositor(
           tui,
           () => buildSidebarContext(currentCwd),
+          sidebarWidth,
         );
         comp.install();
         compositorRef = comp;
@@ -479,23 +481,43 @@ export default function piSidebar(pi: ExtensionAPI) {
   });
 
   pi.registerCommand("sidebar-tui", {
-    description: "Toggle sidebar on or off (usage: /sidebar-tui on | off)",
+    description: "Control sidebar: /sidebar-tui on | off | width <N>",
     handler: async (args, ctx) => {
       currentCwd = (ctx as any).cwd;
-      const trimmed = args?.trim() ?? "";
-      if (trimmed !== "on" && trimmed !== "off") {
-        (ctx as any).ui?.notify?.("Usage: /sidebar-tui on | off", "warning");
+      const parts = (args?.trim() ?? "").split(/\s+/);
+      const cmd = parts[0];
+
+      if (cmd === "width") {
+        const n = parseInt(parts[1] ?? "", 10);
+        if (isNaN(n) || n < 10 || n > 120) {
+          (ctx as any).ui?.notify?.("Usage: /sidebar-tui width <10-120>", "warning");
+          return;
+        }
+        sidebarWidth = n;
+        if (compositorRef && tuiRef) {
+          compositorRef.dispose();
+          compositorRef = null;
+          const comp = new SidebarCompositor(tuiRef, () => buildSidebarContext(currentCwd), sidebarWidth);
+          comp.install();
+          compositorRef = comp;
+          requestRender?.();
+        }
+        (ctx as any).ui?.notify?.(`Sidebar width set to ${n}`, "info");
         return;
       }
 
-      const wantEnabled = trimmed === "on";
-      sidebarEnabled = wantEnabled;
+      if (cmd !== "on" && cmd !== "off") {
+        (ctx as any).ui?.notify?.("Usage: /sidebar-tui on | off | width <N>", "warning");
+        return;
+      }
+
+      sidebarEnabled = cmd === "on";
 
       if (!sidebarEnabled) {
         compositorRef?.dispose();
         compositorRef = null;
       } else if (tuiRef && !compositorRef) {
-        const comp = new SidebarCompositor(tuiRef, () => buildSidebarContext(currentCwd));
+        const comp = new SidebarCompositor(tuiRef, () => buildSidebarContext(currentCwd), sidebarWidth);
         comp.install();
         compositorRef = comp;
         requestRender?.();

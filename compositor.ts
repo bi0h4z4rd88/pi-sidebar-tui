@@ -28,14 +28,15 @@ export class SidebarCompositor {
   private originalWrite: (data: string) => void;
   private disposed = false;
 
-  constructor(tui: any, getCtx: () => SidebarContext) {
+  private readonly sidebarWidth: number;
+
+  constructor(tui: any, getCtx: () => SidebarContext, sidebarWidth = 40) {
     this.tui = tui;
     this.terminal = tui.terminal;
     this.getCtx = getCtx;
     this.originalWrite = this.terminal.write.bind(this.terminal);
+    this.sidebarWidth = sidebarWidth;
   }
-
-  private readonly sidebarWidth = 40;
 
   install(): void {
     // Narrow terminal.columns so pi renders in the left portion only.

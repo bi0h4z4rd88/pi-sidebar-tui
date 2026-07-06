@@ -2,6 +2,8 @@ import { truncateToWidth } from "@earendil-works/pi-tui";
 import type { SidebarContext } from "../types.ts";
 import { dim, fg, COLORS, panelHeader } from "../colors.ts";
 
+const NA = "—";
+
 export function renderSessionPanel(ctx: SidebarContext, width: number): string[] {
   const lines: string[] = [...panelHeader("Session", width)];
 
@@ -13,15 +15,9 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
     lines.push(dim(`  ${truncated}`));
   }
 
-  // Session elapsed time
-  const elapsed = Date.now() - ctx.sessionStartMs;
-  if (elapsed >= 1000) {
-    lines.push(dim("  time  ") + fg(COLORS.muted, formatDuration(elapsed)));
-  }
-
   lines.push("");
 
-  // Active tool (live, shown when agent is running)
+  // Active tool (live only)
   if (ctx.activeTool) {
     const toolElapsed = Date.now() - ctx.activeTool.startedAt;
     const toolName = truncateToWidth(ctx.activeTool.name, Math.max(0, width - 14), "…");
@@ -29,69 +25,58 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
     lines.push("");
   }
 
-  // Model + thinking level
-  if (ctx.model) {
-    const thinkSuffix = ctx.thinkingLevel && ctx.thinkingLevel !== "off"
-      ? dim(` · think:${ctx.thinkingLevel}`)
-      : "";
-    const suffixLen = ctx.thinkingLevel && ctx.thinkingLevel !== "off"
-      ? ` · think:${ctx.thinkingLevel}`.length
-      : 0;
-    const modelStr = truncateToWidth(ctx.model, Math.max(0, width - 10 - suffixLen), "…");
-    lines.push(dim("  model ") + fg(COLORS.accent, modelStr) + thinkSuffix);
+  // Model
+  const modelStr = ctx.model
+    ? truncateToWidth(ctx.model, Math.max(0, width - 10), "…")
+    : NA;
+  lines.push(dim("  model ") + fg(ctx.model ? COLORS.accent : COLORS.muted, modelStr));
+
+  if (ctx.model && ctx.thinkingLevel && ctx.thinkingLevel !== "off") {
+    lines.push(dim(`  think ${ctx.thinkingLevel}`));
   }
 
-  // Context usage
+  // Context
   if (ctx.contextPercent !== null) {
     const pct = ctx.contextPercent;
-    const pctStr = pct.toFixed(1) + "%";
     const tokens = ctx.contextTokens !== null ? formatK(ctx.contextTokens) : "?";
     const win = ctx.contextWindow !== null ? formatK(ctx.contextWindow) : "?";
     const ctxColor = pct > 90 ? COLORS.warning : pct > 70 ? COLORS.accent : COLORS.header;
-    lines.push(dim("  ctx   ") + fg(ctxColor, `${tokens} / ${win}`) + dim(` (${pctStr})`));
-
+    lines.push(dim("  ctx   ") + fg(ctxColor, `${tokens} / ${win}`) + dim(` (${pct.toFixed(1)}%)`));
     if (ctx.autoCompactEnabled !== null) {
       const compactColor = pct > 70 ? COLORS.warning : COLORS.muted;
-      const label = ctx.autoCompactEnabled ? "auto-compact on" : "auto-compact off";
-      lines.push(dim("  ") + fg(compactColor, label));
+      lines.push(dim("  ") + fg(compactColor, ctx.autoCompactEnabled ? "auto-compact on" : "auto-compact off"));
     }
+  } else {
+    lines.push(dim("  ctx   ") + fg(COLORS.muted, NA));
   }
 
-  // Speed + last turn latency
+  lines.push("");
+
+  // Timing
+  const elapsed = Date.now() - ctx.sessionStartMs;
+  lines.push(dim("  time  ") + fg(COLORS.muted, elapsed >= 1000 ? formatDuration(elapsed) : NA));
+  lines.push(dim("  last  ") + fg(COLORS.muted, ctx.lastTurnMs !== null ? formatDuration(ctx.lastTurnMs) : NA));
+
   const avgTps = ctx.modelGenerationMs > 0
     ? Math.round(ctx.modelTokensOut / (ctx.modelGenerationMs / 1000))
     : null;
-  if (avgTps !== null) {
-    lines.push(dim("  speed ") + fg(COLORS.muted, `${avgTps} tok/s`));
-  }
-  if (ctx.lastTurnMs !== null) {
-    lines.push(dim("  last  ") + fg(COLORS.muted, formatDuration(ctx.lastTurnMs)));
-  }
+  lines.push(dim("  speed ") + fg(COLORS.muted, avgTps !== null ? `${avgTps} tok/s` : NA));
 
-  // Tokens in / out + cost
-  if (ctx.tokensIn > 0 || ctx.tokensOut > 0) {
-    lines.push(dim("  in    ") + fg(COLORS.muted, formatK(ctx.tokensIn)));
-    lines.push(dim("  out   ") + fg(COLORS.muted, formatK(ctx.tokensOut)));
-    if (ctx.sessionCost > 0) {
-      lines.push(dim("  cost  ") + fg(COLORS.muted, `$${ctx.sessionCost.toFixed(3)}`));
-    }
-  }
+  lines.push("");
 
-  // Session token total
+  // Tokens
+  lines.push(dim("  in    ") + fg(COLORS.muted, ctx.tokensIn > 0 ? formatK(ctx.tokensIn) : NA));
+  lines.push(dim("  out   ") + fg(COLORS.muted, ctx.tokensOut > 0 ? formatK(ctx.tokensOut) : NA));
+
   const tokenTotal = ctx.tokensIn + ctx.tokensOut + ctx.cacheRead + ctx.cacheWrite;
-  if (tokenTotal > 0) {
-    lines.push(dim("  total ") + fg(COLORS.muted, formatK(tokenTotal)));
-  }
+  lines.push(dim("  total ") + fg(COLORS.muted, tokenTotal > 0 ? formatK(tokenTotal) : NA));
 
-  // Cache efficiency + turn count
   const totalIn = ctx.tokensIn + ctx.cacheRead;
   const cacheHitPct = totalIn > 0 ? Math.round((ctx.cacheRead / totalIn) * 100) : null;
-  if (cacheHitPct !== null && cacheHitPct > 0) {
-    lines.push(dim("  cache ") + fg(COLORS.muted, `${cacheHitPct}%`));
-  }
-  if (ctx.turnCount > 0) {
-    lines.push(dim("  turns ") + fg(COLORS.muted, String(ctx.turnCount)));
-  }
+  lines.push(dim("  cache ") + fg(COLORS.muted, cacheHitPct !== null && cacheHitPct > 0 ? `${cacheHitPct}%` : NA));
+
+  lines.push(dim("  cost  ") + fg(COLORS.muted, ctx.sessionCost > 0 ? `$${ctx.sessionCost.toFixed(3)}` : NA));
+  lines.push(dim("  turns ") + fg(COLORS.muted, ctx.turnCount > 0 ? String(ctx.turnCount) : NA));
 
   return lines;
 }
