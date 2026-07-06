@@ -58,18 +58,15 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
     }
   }
 
-  // Live TPS during streaming
-  if (ctx.agentStartMs !== null && ctx.streamingOut > 0) {
-    const elapsedSec = (Date.now() - ctx.agentStartMs) / 1000;
-    const tps = elapsedSec > 0 ? Math.round(ctx.streamingOut / elapsedSec) : 0;
-    if (tps > 0) {
-      lines.push(fg(COLORS.success, `  ~${tps} tok/s`));
-    }
-  }
-
-  // Last turn latency
-  if (ctx.lastTurnMs !== null && ctx.agentStartMs === null) {
-    lines.push(dim("  last ") + fg(COLORS.muted, formatDuration(ctx.lastTurnMs)));
+  // Session avg tok/s + last turn latency
+  const avgTps = ctx.totalAgentMs > 0
+    ? Math.round(ctx.tokensOut / (ctx.totalAgentMs / 1000))
+    : null;
+  if (avgTps !== null || ctx.lastTurnMs !== null) {
+    const parts: string[] = [];
+    if (avgTps !== null) parts.push(dim("  ~") + fg(COLORS.muted, `${avgTps} tok/s`));
+    if (ctx.lastTurnMs !== null) parts.push(dim("  last ") + fg(COLORS.muted, formatDuration(ctx.lastTurnMs)));
+    lines.push(parts.join(""));
   }
 
   // Token in / out + cost

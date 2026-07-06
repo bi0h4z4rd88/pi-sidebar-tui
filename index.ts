@@ -32,7 +32,7 @@ let sessionStartMs = Date.now();
 let mcpServers: McpServerInfo[] = [];
 let modelProvider: string | null = null;
 let agentStartMs: number | null = null;
-let streamingOut = 0;
+let totalAgentMs = 0;
 let lastTurnMs: number | null = null;
 let sessionTimerHandle: ReturnType<typeof setInterval> | null = null;
 
@@ -100,8 +100,7 @@ function buildSidebarContext(cwd: string | undefined): SidebarContext {
     sessionStartMs,
     mcpServers,
     modelProvider,
-    agentStartMs,
-    streamingOut,
+    totalAgentMs,
     lastTurnMs,
   };
 }
@@ -266,7 +265,7 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
     turnCount = 0;
     activeTool = null;
     agentStartMs = null;
-    streamingOut = 0;
+    totalAgentMs = 0;
     lastTurnMs = null;
     sessionTitle = null;
     todos = [];
@@ -379,8 +378,8 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
     activeTool = null;
     if (agentStartMs !== null) {
       lastTurnMs = Date.now() - agentStartMs;
+      totalAgentMs += lastTurnMs;
       agentStartMs = null;
-      streamingOut = 0;
     }
     requestRender?.();
   });
@@ -406,14 +405,6 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
     streamingOut = 0;
     updateContextUsage(ctx);
     requestRender?.();
-  });
-
-  pi.on("message_update", async (event) => {
-    const usage = (event as any).message?.usage;
-    if (usage && typeof usage.output === "number" && usage.output > 0) {
-      streamingOut = usage.output;
-      requestRender?.();
-    }
   });
 
   pi.on("tool_execution_start", async (event) => {
