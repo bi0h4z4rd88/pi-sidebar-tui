@@ -11,11 +11,10 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
   if (!title) {
     lines.push(dim("  (waiting for first message…)"));
   } else {
-    const truncated = truncateToWidth(title, Math.max(0, width - 2), "…");
-    lines.push(dim(`  ${truncated}`));
-  }
-  if (ctx.sessionId) {
-    lines.push(dim(`  ${ctx.sessionId}`));
+    const sep = ctx.sessionId ? dim(" - ") + fg(COLORS.success, ctx.sessionId) : "";
+    const sepLen = ctx.sessionId ? 3 + ctx.sessionId.length : 0;
+    const truncated = truncateToWidth(title, Math.max(0, width - 2 - sepLen), "…");
+    lines.push(dim(`  ${truncated}`) + sep);
   }
 
   lines.push("");
