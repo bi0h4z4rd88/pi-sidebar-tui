@@ -82,8 +82,8 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
   const v2W = Math.max(0, c2W - 6);
 
   // Column sub-headers with separator
-  const h1 = "stats".padEnd(c1W);
-  const h2 = "tokens";
+  const h1 = "Stats".padEnd(c1W);
+  const h2 = "Tokens";
   lines.push(dim("  " + h1 + h2));
   lines.push(dim("  " + "─".repeat(Math.max(0, usable - 1))));
 
