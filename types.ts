@@ -60,7 +60,6 @@ export interface SidebarContext {
   sessionStartMs: number;
   mcpServers: McpServerInfo[];
   modelProvider: string | null;
-  modelTokensOut: number;
-  modelGenerationMs: number;
+  lastTps: number | null;
   lastTurnMs: number | null;
 }

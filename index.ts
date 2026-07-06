@@ -33,10 +33,8 @@ let sessionStartMs = Date.now();
 let mcpServers: McpServerInfo[] = [];
 let modelProvider: string | null = null;
 let agentStartMs: number | null = null;
-let genStartMs: number | null = null;
-let lastGenOut = 0;
-let modelTokensOut = 0;
-let modelGenerationMs = 0;
+let msgStartMs: number | null = null;
+let lastTps: number | null = null;
 let lastTurnMs: number | null = null;
 let sessionTimerHandle: ReturnType<typeof setInterval> | null = null;
 
@@ -137,8 +135,7 @@ function buildSidebarContext(cwd: string | undefined): SidebarContext {
     sessionStartMs,
     mcpServers,
     modelProvider,
-    modelTokensOut,
-    modelGenerationMs,
+    lastTps,
     lastTurnMs,
   };
 }
@@ -305,10 +302,8 @@ export default function piSidebar(pi: ExtensionAPI) {
     turnCount = 0;
     activeTool = null;
     agentStartMs = null;
-    genStartMs = null;
-    lastGenOut = 0;
-    modelTokensOut = 0;
-    modelGenerationMs = 0;
+    msgStartMs = null;
+    lastTps = null;
     lastTurnMs = null;
     sessionTitle = null;
     todos = [];
@@ -395,16 +390,7 @@ export default function piSidebar(pi: ExtensionAPI) {
 
   pi.on("message_start", async (event) => {
     if ((event as any).message?.role === "assistant") {
-      genStartMs = null;
-      lastGenOut = 0;
-    }
-  });
-
-  pi.on("message_update", async (event) => {
-    const out = (event as any).message?.usage?.output ?? 0;
-    if (out > lastGenOut) {
-      lastGenOut = out;
-      if (genStartMs === null) genStartMs = Date.now();
+      msgStartMs = Date.now(); // precise start when available
     }
   });
 
@@ -419,11 +405,12 @@ export default function piSidebar(pi: ExtensionAPI) {
         cacheRead += usage.cacheRead ?? 0;
         cacheWrite += usage.cacheWrite ?? 0;
         sessionCost += usage.cost?.total ?? 0;
-        modelTokensOut += usage.output ?? 0;
-        if (genStartMs !== null) {
-          modelGenerationMs += Date.now() - genStartMs;
-          genStartMs = null;
+        const out = usage.output ?? 0;
+        const elapsed = msgStartMs !== null ? Date.now() - msgStartMs : null;
+        if (elapsed !== null && elapsed > 50 && out > 0) {
+          lastTps = Math.round(out / (elapsed / 1000));
         }
+        msgStartMs = null;
       }
     }
     if (activeSubagentId) {
@@ -462,10 +449,8 @@ export default function piSidebar(pi: ExtensionAPI) {
     const m = (event as any).model;
     if (m?.name) currentModel = m.name;
     else if (m?.id) currentModel = m.id;
-    genStartMs = null;
-    lastGenOut = 0;
-    modelTokensOut = 0;
-    modelGenerationMs = 0;
+    msgStartMs = null;
+    lastTps = null;
     lastTurnMs = null;
     updateContextUsage(ctx);
     requestRender?.();
@@ -474,6 +459,7 @@ export default function piSidebar(pi: ExtensionAPI) {
   pi.on("agent_start", async (_event, ctx) => {
     currentCwd = (ctx as any).cwd;
     agentStartMs = Date.now();
+    msgStartMs = agentStartMs; // fallback: if message_start never fires
     updateContextUsage(ctx);
     requestRender?.();
   });
