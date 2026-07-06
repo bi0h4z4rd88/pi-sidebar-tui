@@ -11,10 +11,11 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
   if (!title) {
     lines.push(dim("  (waiting for first message…)"));
   } else {
-    const sep = ctx.sessionId ? dim(" - ") + fg(COLORS.success, ctx.sessionId) : "";
-    const sepLen = ctx.sessionId ? 3 + ctx.sessionId.length : 0;
-    const truncated = truncateToWidth(title, Math.max(0, width - 2 - sepLen), "…");
-    lines.push(dim(`  ${truncated}`) + sep);
+    const truncated = truncateToWidth(title, Math.max(0, width - 2), "…");
+    lines.push(dim(`  ${truncated}`));
+  }
+  if (ctx.sessionId) {
+    lines.push(dim(`  ${ctx.sessionId}`));
   }
 
   lines.push("");
@@ -28,12 +29,16 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
   }
 
   // Model
-  const thinkSuffix = ctx.model && ctx.thinkingLevel && ctx.thinkingLevel !== "off"
-    ? `-${ctx.thinkingLevel}` : "";
+  const hasThink = !!(ctx.model && ctx.thinkingLevel && ctx.thinkingLevel !== "off");
+  const thinkStr = hasThink ? `-${ctx.thinkingLevel}` : "";
   const modelDisplay = ctx.model
-    ? truncateToWidth(ctx.model + thinkSuffix, Math.max(0, width - 10), "…")
+    ? truncateToWidth(ctx.model, Math.max(0, width - 10 - thinkStr.length), "…")
     : NA;
-  lines.push(dim("  model ") + fg(ctx.model ? COLORS.accent : COLORS.muted, modelDisplay));
+  lines.push(
+    dim("  model ") +
+    fg(ctx.model ? COLORS.accent : COLORS.muted, modelDisplay) +
+    (hasThink ? fg(COLORS.success, thinkStr) : "")
+  );
 
   // Context
   if (ctx.contextPercent !== null) {
