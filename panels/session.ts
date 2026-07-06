@@ -26,13 +26,12 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
   }
 
   // Model
+  const thinkSuffix = ctx.model && ctx.thinkingLevel && ctx.thinkingLevel !== "off"
+    ? `-${ctx.thinkingLevel}` : "";
   const modelDisplay = ctx.model
-    ? truncateToWidth(ctx.model, Math.max(0, width - 10), "…")
+    ? truncateToWidth(ctx.model + thinkSuffix, Math.max(0, width - 10), "…")
     : NA;
   lines.push(dim("  model ") + fg(ctx.model ? COLORS.accent : COLORS.muted, modelDisplay));
-  if (ctx.model && ctx.thinkingLevel && ctx.thinkingLevel !== "off") {
-    lines.push(dim(`  think ${ctx.thinkingLevel}`));
-  }
 
   // Context
   if (ctx.contextPercent !== null) {
