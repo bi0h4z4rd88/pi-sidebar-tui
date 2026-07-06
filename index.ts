@@ -12,6 +12,7 @@ const WRITE_TOOLS = new Set(["write", "edit", "bash", "computer"]);
 
 let sidebarEnabled = true;
 let sidebarWidth = 40;
+let sessionManager: any = null;
 let sessionTitle: string | null = null;
 let todos: TodoItem[] = [];
 const subagentsMap = new Map<string, SubagentEntry>();
@@ -115,6 +116,7 @@ function buildSidebarContext(cwd: string | undefined): SidebarContext {
   const ws = getWorkspaceData(cwd);
   return {
     sessionTitle,
+    sessionId: sessionManager?.getSessionId?.() ?? null,
     todos,
     subagents: Array.from(subagentsMap.values()),
     branch: ws.branch,
@@ -203,6 +205,7 @@ export default function piSidebar(pi: ExtensionAPI) {
   let compositorRef: SidebarCompositor | null = null;
 
   pi.on("session_start", async (_event, ctx) => {
+    sessionManager = ctx.sessionManager;
     sessionTitle = ctx.sessionManager.getSessionName() ?? inferSessionTitle(ctx.sessionManager) ?? null;
     todos = [];
     subagentsMap.clear();

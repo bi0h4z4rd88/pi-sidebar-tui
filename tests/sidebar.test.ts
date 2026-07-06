@@ -11,6 +11,7 @@ function strip(s: string): string {
 function makeCtx(overrides: Partial<SidebarContext> = {}): SidebarContext {
   return {
     sessionTitle: null,
+    sessionId: null,
     todos: [],
     subagents: [],
     branch: "main",
@@ -77,6 +78,7 @@ test("sidebar width=1 does not throw", () => {
 test("sidebar empty states for all panels render without error", () => {
   const ctx = makeCtx({
     sessionTitle: null,
+    sessionId: null,
     todos: [],
     subagents: [],
     branch: null,

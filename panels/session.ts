@@ -14,6 +14,9 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
     const truncated = truncateToWidth(title, Math.max(0, width - 2), "…");
     lines.push(dim(`  ${truncated}`));
   }
+  if (ctx.sessionId) {
+    lines.push(dim(`  ${ctx.sessionId}`));
+  }
 
   lines.push("");
 

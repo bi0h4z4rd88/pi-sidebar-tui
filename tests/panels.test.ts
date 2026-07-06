@@ -14,6 +14,7 @@ function strip(s: string): string {
 function makeCtx(overrides: Partial<SidebarContext> = {}): SidebarContext {
   return {
     sessionTitle: null,
+    sessionId: null,
     todos: [],
     subagents: [],
     branch: "main",

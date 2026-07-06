@@ -37,6 +37,7 @@ export interface McpServerInfo {
 
 export interface SidebarContext {
   sessionTitle: string | null;
+  sessionId: string | null;
   todos: TodoItem[];
   subagents: SubagentEntry[];
   branch: string | null;
