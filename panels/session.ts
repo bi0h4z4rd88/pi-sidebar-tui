@@ -59,8 +59,8 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
   }
 
   // Session avg tok/s + last turn latency
-  const avgTps = ctx.totalAgentMs > 0
-    ? Math.round(ctx.tokensOut / (ctx.totalAgentMs / 1000))
+  const avgTps = ctx.modelAgentMs > 0
+    ? Math.round(ctx.modelTokensOut / (ctx.modelAgentMs / 1000))
     : null;
   if (avgTps !== null || ctx.lastTurnMs !== null) {
     const parts: string[] = [];

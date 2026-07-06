@@ -32,7 +32,8 @@ let sessionStartMs = Date.now();
 let mcpServers: McpServerInfo[] = [];
 let modelProvider: string | null = null;
 let agentStartMs: number | null = null;
-let totalAgentMs = 0;
+let modelTokensOut = 0;
+let modelAgentMs = 0;
 let lastTurnMs: number | null = null;
 let sessionTimerHandle: ReturnType<typeof setInterval> | null = null;
 
@@ -100,7 +101,8 @@ function buildSidebarContext(cwd: string | undefined): SidebarContext {
     sessionStartMs,
     mcpServers,
     modelProvider,
-    totalAgentMs,
+    modelTokensOut,
+    modelAgentMs,
     lastTurnMs,
   };
 }
@@ -265,7 +267,8 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
     turnCount = 0;
     activeTool = null;
     agentStartMs = null;
-    totalAgentMs = 0;
+    modelTokensOut = 0;
+    modelAgentMs = 0;
     lastTurnMs = null;
     sessionTitle = null;
     todos = [];
@@ -356,6 +359,7 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
         cacheRead += usage.cacheRead ?? 0;
         cacheWrite += usage.cacheWrite ?? 0;
         sessionCost += usage.cost?.total ?? 0;
+        modelTokensOut += usage.output ?? 0;
       }
     }
     if (activeSubagentId) {
@@ -378,7 +382,7 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
     activeTool = null;
     if (agentStartMs !== null) {
       lastTurnMs = Date.now() - agentStartMs;
-      totalAgentMs += lastTurnMs;
+      modelAgentMs += lastTurnMs;
       agentStartMs = null;
     }
     requestRender?.();
@@ -395,6 +399,9 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
     const m = (event as any).model;
     if (m?.name) currentModel = m.name;
     else if (m?.id) currentModel = m.id;
+    modelTokensOut = 0;
+    modelAgentMs = 0;
+    lastTurnMs = null;
     updateContextUsage(ctx);
     requestRender?.();
   });
