@@ -83,9 +83,9 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
 
   // Column sub-headers with separator
   const h1 = "stats".padEnd(c1W);
-  const h2 = "token";
+  const h2 = "tokens";
   lines.push(dim("  " + h1 + h2));
-  lines.push(dim("  " + "─".repeat(usable)));
+  lines.push(dim("  " + "─".repeat(Math.max(0, usable - 1))));
 
   const rowCount = Math.max(col1.length, col2.length);
   for (let i = 0; i < rowCount; i++) {
