@@ -409,7 +409,6 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
   pi.on("agent_start", async (_event, ctx) => {
     currentCwd = (ctx as any).cwd;
     agentStartMs = Date.now();
-    streamingOut = 0;
     updateContextUsage(ctx);
     requestRender?.();
   });
