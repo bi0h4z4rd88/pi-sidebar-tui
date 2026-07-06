@@ -53,7 +53,6 @@ function inferThinkingLevel(sm: any): string | null {
 }
 
 const FILLER_PREFIX = /^(can you |could you |please |i want you to |i'd like you to |i need you to |help me |i need to |let's |let us )+/i;
-// Strips "use a subagent to", "create a script that", "run a tool for", etc. — keeps the actual goal
 const METHOD_WRAPPER = /^(use|create|run|make|build|write|add|generate|implement|spawn|start)\s+(?:(?:a|an|the|some|my|one)\s+)?(?:\w+\s+){0,3}(?:to|that|which|for)\s+/i;
 
 function summarizePrompt(raw: string): string {
@@ -62,6 +61,29 @@ function summarizePrompt(raw: string): string {
   const noWrapper = noFiller.replace(METHOD_WRAPPER, "").trim();
   const title = noWrapper.charAt(0).toUpperCase() + noWrapper.slice(1);
   return title.slice(0, 60);
+}
+
+async function generateTitleWithModel(prompt: string, ctx: any, onTitle: (t: string) => void): Promise<void> {
+  try {
+    const registry = ctx.modelRegistry;
+    if (!registry?.streamSimple) return;
+    const modelDesc = ctx.model;
+    if (!modelDesc) return;
+    const fullModel = (registry.getAll() as any[]).find((m: any) => m.id === modelDesc.id);
+    if (!fullModel) return;
+    const context = {
+      messages: [{
+        role: "user" as const,
+        content: `Write a 5-7 word task title for this request. Start with an action verb. No punctuation. Output only the title.\n\n${prompt.slice(0, 500)}`,
+      }],
+    };
+    const stream = registry.streamSimple(fullModel, context, { maxTokens: 20, reasoning: "off" });
+    const message = await (stream as any).result();
+    const text = (message.content as any[]).find((c: any) => c.type === "text")?.text?.trim() ?? "";
+    if (text.length > 0 && text.length <= 80) onTitle(text.slice(0, 60));
+  } catch {
+    // fallback already set
+  }
 }
 
 function inferSessionTitle(sm: any): string | null {
@@ -290,7 +312,12 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
   pi.on("before_agent_start", async (event, ctx) => {
     currentCwd = (ctx as any).cwd;
     if (sessionTitle === null && typeof (event as any).prompt === "string") {
-      sessionTitle = summarizePrompt((event as any).prompt);
+      const raw = (event as any).prompt as string;
+      sessionTitle = summarizePrompt(raw);
+      generateTitleWithModel(raw, ctx, (title) => {
+        sessionTitle = title;
+        requestRender?.();
+      });
     }
     updateContextUsage(ctx);
     requestRender?.();
