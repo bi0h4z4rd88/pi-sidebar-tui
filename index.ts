@@ -32,8 +32,9 @@ let sessionStartMs = Date.now();
 let mcpServers: McpServerInfo[] = [];
 let modelProvider: string | null = null;
 let agentStartMs: number | null = null;
+let messageStartMs: number | null = null;
 let modelTokensOut = 0;
-let modelAgentMs = 0;
+let modelGenerationMs = 0;
 let lastTurnMs: number | null = null;
 let sessionTimerHandle: ReturnType<typeof setInterval> | null = null;
 
@@ -135,7 +136,7 @@ function buildSidebarContext(cwd: string | undefined): SidebarContext {
     mcpServers,
     modelProvider,
     modelTokensOut,
-    modelAgentMs,
+    modelGenerationMs,
     lastTurnMs,
   };
 }
@@ -301,7 +302,7 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
     activeTool = null;
     agentStartMs = null;
     modelTokensOut = 0;
-    modelAgentMs = 0;
+    modelGenerationMs = 0;
     lastTurnMs = null;
     sessionTitle = null;
     todos = [];
@@ -386,6 +387,12 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
     }
   });
 
+  pi.on("message_start", async (event) => {
+    if ((event as any).message?.role === "assistant") {
+      messageStartMs = Date.now();
+    }
+  });
+
   pi.on("message_end", async (event, ctx) => {
     currentCwd = (ctx as any).cwd;
     const usage = (event as any).message?.usage;
@@ -398,6 +405,10 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
         cacheWrite += usage.cacheWrite ?? 0;
         sessionCost += usage.cost?.total ?? 0;
         modelTokensOut += usage.output ?? 0;
+        if (messageStartMs !== null) {
+          modelGenerationMs += Date.now() - messageStartMs;
+          messageStartMs = null;
+        }
       }
     }
     if (activeSubagentId) {
@@ -420,7 +431,6 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
     activeTool = null;
     if (agentStartMs !== null) {
       lastTurnMs = Date.now() - agentStartMs;
-      modelAgentMs += lastTurnMs;
       agentStartMs = null;
     }
     requestRender?.();
@@ -438,7 +448,7 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
     if (m?.name) currentModel = m.name;
     else if (m?.id) currentModel = m.id;
     modelTokensOut = 0;
-    modelAgentMs = 0;
+    modelGenerationMs = 0;
     lastTurnMs = null;
     updateContextUsage(ctx);
     requestRender?.();

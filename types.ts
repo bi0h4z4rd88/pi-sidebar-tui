@@ -61,6 +61,6 @@ export interface SidebarContext {
   mcpServers: McpServerInfo[];
   modelProvider: string | null;
   modelTokensOut: number;
-  modelAgentMs: number;
+  modelGenerationMs: number;
   lastTurnMs: number | null;
 }
