@@ -196,6 +196,8 @@ function extractSubagentName(input: unknown): string {
 export default function piSidebar(pi: ExtensionAPI) {
   let currentCwd: string | undefined = process.cwd();
   let requestRender: (() => void) | null = null;
+  let tuiRef: any = null;
+  let compositorRef: SidebarCompositor | null = null;
 
   pi.on("session_start", async (_event, ctx) => {
     sessionTitle = ctx.sessionManager.getSessionName() ?? inferSessionTitle(ctx.sessionManager) ?? null;
@@ -243,8 +245,6 @@ export default function piSidebar(pi: ExtensionAPI) {
 
     const ui = (ctx as any).ui;
     let renderTick = 0;
-    let tuiRef: any = null;
-    let compositorRef: SidebarCompositor | null = null;
 
     const scheduleRender = () => {
       const tick = ++renderTick;
@@ -275,9 +275,10 @@ export default function piSidebar(pi: ExtensionAPI) {
 
       return {
         dispose() {
-          if (requestRender === myRender) { requestRender = null; tuiRef = null; }
+          if (requestRender === myRender) { requestRender = null; }
           compositorRef?.dispose();
           compositorRef = null;
+          tuiRef = null;
         },
         invalidate() {},
         render(_width: number): string[] { return []; },
@@ -483,12 +484,17 @@ export default function piSidebar(pi: ExtensionAPI) {
       currentCwd = (ctx as any).cwd;
       const trimmed = args?.trim() ?? "";
 
-      if (trimmed === "on") {
-        sidebarEnabled = true;
-      } else if (trimmed === "off") {
-        sidebarEnabled = false;
-      } else {
-        sidebarEnabled = !sidebarEnabled;
+      const wantEnabled = trimmed === "on" ? true : trimmed === "off" ? false : !sidebarEnabled;
+      sidebarEnabled = wantEnabled;
+
+      if (!sidebarEnabled) {
+        compositorRef?.dispose();
+        compositorRef = null;
+      } else if (tuiRef && !compositorRef) {
+        const comp = new SidebarCompositor(tuiRef, () => buildSidebarContext(currentCwd));
+        comp.install();
+        compositorRef = comp;
+        requestRender?.();
       }
 
       (ctx as any).ui?.notify?.(
