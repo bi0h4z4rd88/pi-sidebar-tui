@@ -399,7 +399,8 @@ export default function piSidebar(pi: ExtensionAPI) {
   });
 
   pi.on("message_update", async (event) => {
-    if ((event as any).message?.role !== "assistant" || msgStartMs === null) return;
+    if ((event as any).message?.role !== "assistant") return;
+    if (msgStartMs === null) msgStartMs = Date.now(); // fallback if message_start didn't fire
     const elapsed = Date.now() - msgStartMs;
     if (elapsed < 200) return;
     // prefer usage.output; fall back to char count / 4
@@ -481,7 +482,7 @@ export default function piSidebar(pi: ExtensionAPI) {
   pi.on("agent_start", async (_event, ctx) => {
     currentCwd = (ctx as any).cwd;
     agentStartMs = Date.now();
-    msgStartMs = agentStartMs; // fallback: if message_start never fires
+    msgStartMs = null;
     updateContextUsage(ctx);
     requestRender?.();
   });

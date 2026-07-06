@@ -64,8 +64,8 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
     ["time", elapsed >= 1000 ? formatDuration(elapsed) : NA],
     ["last", ctx.lastTurnMs !== null ? formatDuration(ctx.lastTurnMs) : NA],
     ["speed", avgTps !== null ? `${avgTps} tok/s` : NA],
-    ["cost", ctx.sessionCost > 0 ? `$${ctx.sessionCost.toFixed(3)}` : NA],
     ["turns", ctx.turnCount > 0 ? String(ctx.turnCount) : NA],
+    ["cost", ctx.sessionCost > 0 ? `$${ctx.sessionCost.toFixed(3)}` : NA],
   ];
 
   const col2: [string, string][] = [
