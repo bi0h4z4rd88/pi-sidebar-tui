@@ -39,9 +39,6 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
       : 0;
     const modelStr = truncateToWidth(ctx.model, Math.max(0, width - 6 - suffixLen), "…");
     lines.push(dim("  ◈ ") + fg(COLORS.accent, modelStr) + thinkSuffix);
-    if (ctx.modelProvider) {
-      lines.push(dim(`  via ${ctx.modelProvider}`));
-    }
   }
 
   // Context usage: nb_ctx / max_ctx (pct%)
