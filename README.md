@@ -7,7 +7,7 @@ Displays a real-time sidebar panel inside the pi terminal UI showing session met
 ## Features
 
 ### Session Panel
-- Session title (auto-inferred from first user message or manually set)
+- Session title (auto-inferred from first user message with LLM fallback, or manually set)
 - Session elapsed time (updated every 30 seconds)
 - Active tool indicator with live elapsed timer
 - Current model name with thinking level (`think:high`, `think:medium`, etc.)
@@ -15,6 +15,7 @@ Displays a real-time sidebar panel inside the pi terminal UI showing session met
 - Auto-compact status indicator
 - Token input/output totals + session cost
 - Cache hit percentage + turn count
+- Live tokens-per-second (tok/s) via 2-second sliding window
 
 ### MCP Servers Panel
 - Connected MCP server status with connection indicators

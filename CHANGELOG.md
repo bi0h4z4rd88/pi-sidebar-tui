@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0] - 2026-07-06
+
+### Added
+
+- **Live tok/s display**: Real-time tokens-per-second via 2-second sliding window, tracked per-model and reset on model change
+- **Session title auto-inference**: Auto-generated from first user prompt with regex-based summarization (strips filler/method wrappers) and async LLM fallback
+- **Static stat labels**: All session labels always visible with `—` fallback when data absent (time, last turn, speed, turns, cost, in, out, total, cache)
+- **Stats/token column headers**: Two-column layout with separator line and headers
+
+### Changed
+
+- Sidebar toggle (`/sidebar-tui off/on`) properly disposes/reinstalls the compositor at runtime
+- tok/s measured against LLM generation time only (message_start → message_end), excludes tool execution
+- Session title regex strips method wrapper patterns ("use", "create", "build", etc.) and filler prefixes
+- Removed model provider display from session panel
+- Removed OpenCode references — neutral "sidebar" naming throughout
+
+### Fixed
+
+- Terminal column detection via prototype getter to bypass instance-level overrides
+- tok/s clocked from first output token, not request send
+- Removed stale variable references
+- Separator line trimmed one character short for visual consistency
+- Stats/token headers capitalized for consistency
+
 ## [1.0.0] - 2026-07-05
 
 ### Added

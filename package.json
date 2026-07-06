@@ -1,6 +1,6 @@
 {
   "name": "pi-sidebar-tui",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "OpenCode-style sidebar TUI extension for pi coding agent",
   "type": "module",
   "files": [
