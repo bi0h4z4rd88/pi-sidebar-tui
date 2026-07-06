@@ -37,6 +37,8 @@ let msgStartMs: number | null = null;
 let liveTps: number | null = null;
 let lastTps: number | null = null;
 let lastTurnMs: number | null = null;
+let tpsSamples: { t: number; tokens: number }[] = [];
+const TPS_WINDOW_MS = 2000;
 let sessionTimerHandle: ReturnType<typeof setInterval> | null = null;
 
 function inferThinkingLevel(sm: any): string | null {
@@ -308,6 +310,7 @@ export default function piSidebar(pi: ExtensionAPI) {
     liveTps = null;
     lastTps = null;
     lastTurnMs = null;
+    tpsSamples = [];
     sessionTitle = null;
     todos = [];
     subagentsMap.clear();
@@ -395,23 +398,35 @@ export default function piSidebar(pi: ExtensionAPI) {
     if ((event as any).message?.role === "assistant") {
       msgStartMs = Date.now();
       liveTps = null;
+      tpsSamples = [];
     }
   });
 
   pi.on("message_update", async (event) => {
     if ((event as any).message?.role !== "assistant") return;
-    if (msgStartMs === null) msgStartMs = Date.now(); // fallback if message_start didn't fire
-    const elapsed = Date.now() - msgStartMs;
-    if (elapsed < 200) return;
+    if (msgStartMs === null) msgStartMs = Date.now();
+    const now = Date.now();
     // prefer usage.output; fall back to char count / 4
     const usageOut = (event as any).message?.usage?.output ?? 0;
     const textLen = ((event as any).message?.content as any[] | undefined)
       ?.filter((c: any) => c.type === "text")
       .reduce((s: number, c: any) => s + (c.text?.length ?? 0), 0) ?? 0;
-    const est = usageOut > 0 ? usageOut : Math.round(textLen / 4);
-    if (est > 0) {
-      liveTps = Math.round(est / (elapsed / 1000));
-      requestRender?.();
+    const tokens = usageOut > 0 ? usageOut : Math.round(textLen / 4);
+    if (tokens > 0) {
+      tpsSamples.push({ t: now, tokens });
+      // drop samples outside the window
+      while (tpsSamples.length > 1 && now - tpsSamples[0].t > TPS_WINDOW_MS) {
+        tpsSamples.shift();
+      }
+      if (tpsSamples.length >= 2) {
+        const oldest = tpsSamples[0];
+        const dt = now - oldest.t;
+        const dk = tokens - oldest.tokens;
+        if (dt > 0 && dk > 0) {
+          liveTps = Math.round(dk / (dt / 1000));
+          requestRender?.();
+        }
+      }
     }
   });
 
@@ -475,6 +490,7 @@ export default function piSidebar(pi: ExtensionAPI) {
     liveTps = null;
     lastTps = null;
     lastTurnMs = null;
+    tpsSamples = [];
     updateContextUsage(ctx);
     requestRender?.();
   });
