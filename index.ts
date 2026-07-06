@@ -193,7 +193,7 @@ function extractSubagentName(input: unknown): string {
   return name.split("\n")[0].slice(0, 60);
 }
 
-export default function opencodesSidebar(pi: ExtensionAPI) {
+export default function piSidebar(pi: ExtensionAPI) {
   let currentCwd: string | undefined = process.cwd();
   let requestRender: (() => void) | null = null;
 
@@ -261,7 +261,7 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
     const myRender = scheduleRender;
     requestRender = myRender;
 
-    ui.setWidget("opencode-sidebar", (tui: any, _theme: any) => {
+    ui.setWidget("pi-sidebar", (tui: any, _theme: any) => {
       tuiRef = tui;
 
       if (sidebarEnabled) {
@@ -478,7 +478,7 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
   });
 
   pi.registerCommand("sidebar-tui", {
-    description: "Toggle OpenCode sidebar (on, off, toggle, width <N>)",
+    description: "Toggle sidebar (on, off, toggle)",
     handler: async (args, ctx) => {
       currentCwd = (ctx as any).cwd;
       const trimmed = args?.trim() ?? "";
@@ -492,7 +492,7 @@ export default function opencodesSidebar(pi: ExtensionAPI) {
       }
 
       (ctx as any).ui?.notify?.(
-        `OpenCode sidebar ${sidebarEnabled ? "enabled" : "disabled"}`,
+        `Sidebar ${sidebarEnabled ? "enabled" : "disabled"}`,
         "info"
       );
     },
