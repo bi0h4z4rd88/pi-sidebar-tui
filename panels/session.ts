@@ -26,11 +26,10 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
   }
 
   // Model
-  const modelStr = ctx.model
+  const modelDisplay = ctx.model
     ? truncateToWidth(ctx.model, Math.max(0, width - 10), "…")
     : NA;
-  lines.push(dim("  model ") + fg(ctx.model ? COLORS.accent : COLORS.muted, modelStr));
-
+  lines.push(dim("  model ") + fg(ctx.model ? COLORS.accent : COLORS.muted, modelDisplay));
   if (ctx.model && ctx.thinkingLevel && ctx.thinkingLevel !== "off") {
     lines.push(dim(`  think ${ctx.thinkingLevel}`));
   }
@@ -52,31 +51,49 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
 
   lines.push("");
 
-  // Timing
+  // Two-column stats
+  // Col1: time, last, speed, cost, turns
+  // Col2: in, out, total, cache
   const elapsed = Date.now() - ctx.sessionStartMs;
-  lines.push(dim("  time  ") + fg(COLORS.muted, elapsed >= 1000 ? formatDuration(elapsed) : NA));
-  lines.push(dim("  last  ") + fg(COLORS.muted, ctx.lastTurnMs !== null ? formatDuration(ctx.lastTurnMs) : NA));
-
   const avgTps = ctx.modelGenerationMs > 0
     ? Math.round(ctx.modelTokensOut / (ctx.modelGenerationMs / 1000))
     : null;
-  lines.push(dim("  speed ") + fg(COLORS.muted, avgTps !== null ? `${avgTps} tok/s` : NA));
-
-  lines.push("");
-
-  // Tokens
-  lines.push(dim("  in    ") + fg(COLORS.muted, ctx.tokensIn > 0 ? formatK(ctx.tokensIn) : NA));
-  lines.push(dim("  out   ") + fg(COLORS.muted, ctx.tokensOut > 0 ? formatK(ctx.tokensOut) : NA));
-
   const tokenTotal = ctx.tokensIn + ctx.tokensOut + ctx.cacheRead + ctx.cacheWrite;
-  lines.push(dim("  total ") + fg(COLORS.muted, tokenTotal > 0 ? formatK(tokenTotal) : NA));
-
   const totalIn = ctx.tokensIn + ctx.cacheRead;
   const cacheHitPct = totalIn > 0 ? Math.round((ctx.cacheRead / totalIn) * 100) : null;
-  lines.push(dim("  cache ") + fg(COLORS.muted, cacheHitPct !== null && cacheHitPct > 0 ? `${cacheHitPct}%` : NA));
 
-  lines.push(dim("  cost  ") + fg(COLORS.muted, ctx.sessionCost > 0 ? `$${ctx.sessionCost.toFixed(3)}` : NA));
-  lines.push(dim("  turns ") + fg(COLORS.muted, ctx.turnCount > 0 ? String(ctx.turnCount) : NA));
+  const col1: [string, string][] = [
+    ["time", elapsed >= 1000 ? formatDuration(elapsed) : NA],
+    ["last", ctx.lastTurnMs !== null ? formatDuration(ctx.lastTurnMs) : NA],
+    ["speed", avgTps !== null ? `${avgTps} tok/s` : NA],
+    ["cost", ctx.sessionCost > 0 ? `$${ctx.sessionCost.toFixed(3)}` : NA],
+    ["turns", ctx.turnCount > 0 ? String(ctx.turnCount) : NA],
+  ];
+
+  const col2: [string, string][] = [
+    ["in", ctx.tokensIn > 0 ? formatK(ctx.tokensIn) : NA],
+    ["out", ctx.tokensOut > 0 ? formatK(ctx.tokensOut) : NA],
+    ["total", tokenTotal > 0 ? formatK(tokenTotal) : NA],
+    ["cache", cacheHitPct !== null && cacheHitPct > 0 ? `${cacheHitPct}%` : NA],
+  ];
+
+  const usable = Math.max(0, width - 2);
+  const c1W = Math.floor(usable / 2);
+  const c2W = usable - c1W;
+  const v1W = Math.max(0, c1W - 6); // 5 label + 1 space
+  const v2W = Math.max(0, c2W - 6);
+
+  const rowCount = Math.max(col1.length, col2.length);
+  for (let i = 0; i < rowCount; i++) {
+    const [l1, v1] = col1[i] ?? ["", ""];
+    const [l2, v2] = col2[i] ?? ["", ""];
+    const v1s = v1.slice(0, v1W).padEnd(v1W);
+    const v2s = v2.slice(0, v2W);
+    lines.push(
+      dim("  " + l1.padEnd(5) + " ") + fg(COLORS.muted, v1s) +
+      dim(l2.padEnd(5) + " ") + fg(COLORS.muted, v2s)
+    );
+  }
 
   return lines;
 }

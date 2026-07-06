@@ -33,7 +33,8 @@ let sessionStartMs = Date.now();
 let mcpServers: McpServerInfo[] = [];
 let modelProvider: string | null = null;
 let agentStartMs: number | null = null;
-let messageStartMs: number | null = null;
+let genStartMs: number | null = null;
+let lastGenOut = 0;
 let modelTokensOut = 0;
 let modelGenerationMs = 0;
 let lastTurnMs: number | null = null;
@@ -304,6 +305,8 @@ export default function piSidebar(pi: ExtensionAPI) {
     turnCount = 0;
     activeTool = null;
     agentStartMs = null;
+    genStartMs = null;
+    lastGenOut = 0;
     modelTokensOut = 0;
     modelGenerationMs = 0;
     lastTurnMs = null;
@@ -392,7 +395,16 @@ export default function piSidebar(pi: ExtensionAPI) {
 
   pi.on("message_start", async (event) => {
     if ((event as any).message?.role === "assistant") {
-      messageStartMs = Date.now();
+      genStartMs = null;
+      lastGenOut = 0;
+    }
+  });
+
+  pi.on("message_update", async (event) => {
+    const out = (event as any).message?.usage?.output ?? 0;
+    if (out > lastGenOut) {
+      lastGenOut = out;
+      if (genStartMs === null) genStartMs = Date.now();
     }
   });
 
@@ -408,9 +420,9 @@ export default function piSidebar(pi: ExtensionAPI) {
         cacheWrite += usage.cacheWrite ?? 0;
         sessionCost += usage.cost?.total ?? 0;
         modelTokensOut += usage.output ?? 0;
-        if (messageStartMs !== null) {
-          modelGenerationMs += Date.now() - messageStartMs;
-          messageStartMs = null;
+        if (genStartMs !== null) {
+          modelGenerationMs += Date.now() - genStartMs;
+          genStartMs = null;
         }
       }
     }
@@ -450,6 +462,8 @@ export default function piSidebar(pi: ExtensionAPI) {
     const m = (event as any).model;
     if (m?.name) currentModel = m.name;
     else if (m?.id) currentModel = m.id;
+    genStartMs = null;
+    lastGenOut = 0;
     modelTokensOut = 0;
     modelGenerationMs = 0;
     lastTurnMs = null;
