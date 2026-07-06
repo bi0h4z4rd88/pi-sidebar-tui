@@ -34,6 +34,7 @@ function makeCtx(overrides: Partial<SidebarContext> = {}): SidebarContext {
     sessionStartMs: Date.now(),
     mcpServers: [],
     modelProvider: null,
+    liveTps: null,
     lastTps: null,
     lastTurnMs: null,
     ...overrides,

@@ -55,7 +55,7 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
   // Col1: time, last, speed, cost, turns
   // Col2: in, out, total, cache
   const elapsed = Date.now() - ctx.sessionStartMs;
-  const avgTps = ctx.lastTps;
+  const avgTps = ctx.liveTps ?? ctx.lastTps;
   const tokenTotal = ctx.tokensIn + ctx.tokensOut + ctx.cacheRead + ctx.cacheWrite;
   const totalIn = ctx.tokensIn + ctx.cacheRead;
   const cacheHitPct = totalIn > 0 ? Math.round((ctx.cacheRead / totalIn) * 100) : null;

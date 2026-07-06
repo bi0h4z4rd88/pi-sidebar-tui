@@ -34,6 +34,7 @@ let mcpServers: McpServerInfo[] = [];
 let modelProvider: string | null = null;
 let agentStartMs: number | null = null;
 let msgStartMs: number | null = null;
+let liveTps: number | null = null;
 let lastTps: number | null = null;
 let lastTurnMs: number | null = null;
 let sessionTimerHandle: ReturnType<typeof setInterval> | null = null;
@@ -135,6 +136,7 @@ function buildSidebarContext(cwd: string | undefined): SidebarContext {
     sessionStartMs,
     mcpServers,
     modelProvider,
+    liveTps,
     lastTps,
     lastTurnMs,
   };
@@ -303,6 +305,7 @@ export default function piSidebar(pi: ExtensionAPI) {
     activeTool = null;
     agentStartMs = null;
     msgStartMs = null;
+    liveTps = null;
     lastTps = null;
     lastTurnMs = null;
     sessionTitle = null;
@@ -390,7 +393,24 @@ export default function piSidebar(pi: ExtensionAPI) {
 
   pi.on("message_start", async (event) => {
     if ((event as any).message?.role === "assistant") {
-      msgStartMs = Date.now(); // precise start when available
+      msgStartMs = Date.now();
+      liveTps = null;
+    }
+  });
+
+  pi.on("message_update", async (event) => {
+    if ((event as any).message?.role !== "assistant" || msgStartMs === null) return;
+    const elapsed = Date.now() - msgStartMs;
+    if (elapsed < 200) return;
+    // prefer usage.output; fall back to char count / 4
+    const usageOut = (event as any).message?.usage?.output ?? 0;
+    const textLen = ((event as any).message?.content as any[] | undefined)
+      ?.filter((c: any) => c.type === "text")
+      .reduce((s: number, c: any) => s + (c.text?.length ?? 0), 0) ?? 0;
+    const est = usageOut > 0 ? usageOut : Math.round(textLen / 4);
+    if (est > 0) {
+      liveTps = Math.round(est / (elapsed / 1000));
+      requestRender?.();
     }
   });
 
@@ -410,6 +430,7 @@ export default function piSidebar(pi: ExtensionAPI) {
         if (elapsed !== null && elapsed > 50 && out > 0) {
           lastTps = Math.round(out / (elapsed / 1000));
         }
+        liveTps = null;
         msgStartMs = null;
       }
     }
@@ -450,6 +471,7 @@ export default function piSidebar(pi: ExtensionAPI) {
     if (m?.name) currentModel = m.name;
     else if (m?.id) currentModel = m.id;
     msgStartMs = null;
+    liveTps = null;
     lastTps = null;
     lastTurnMs = null;
     updateContextUsage(ctx);
