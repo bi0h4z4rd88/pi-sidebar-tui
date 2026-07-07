@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2026-07-06
+
+### Added
+
+- **Theme-aware colors**: Delegates to pi Theme API when available, falls back to hardcoded ANSI colors
+- **Session ID display**: Shows session ID in session panel
+- **Thinking level indicator**: Inline after model name (e.g. ` - minimal`, ` - high`); shows ` - think off` when disabled
+
+### Changed
+
+- Separator and cwd line use theme `dim()` instead of hardcoded ANSI codes
+- Thinking level dimmed to match interface label styling
+
 ## [1.1.0] - 2026-07-06
 
 ### Added

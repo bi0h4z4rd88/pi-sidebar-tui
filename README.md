@@ -16,6 +16,8 @@ Displays a real-time sidebar panel inside the pi terminal UI showing session met
 - Token input/output totals + session cost
 - Cache hit percentage + turn count
 - Live tokens-per-second (tok/s) via 2-second sliding window
+- Session ID display
+- Theme-aware colors (delegates to pi Theme API when available)
 
 ### MCP Servers Panel
 - Connected MCP server status with connection indicators
