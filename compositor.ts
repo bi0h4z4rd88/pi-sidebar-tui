@@ -1,6 +1,7 @@
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import type { SidebarContext } from "./types.ts";
 import { renderSidebar } from "./sidebar.ts";
+import { dim } from "./colors.ts";
 
 const SIDEBAR_BG = "\x1b[48;2;0;0;0m"; // black — matches terminal bg, hides scroll flash
 const BG_RESET = "\x1b[49m";
@@ -85,13 +86,14 @@ export class SidebarCompositor {
     const cwd = ctx.cwd ?? "";
     const home = process.env["HOME"] ?? "";
     const cwdDisplay = home && cwd.startsWith(home) ? "~" + cwd.slice(home.length) : cwd;
-    const cwdLine = "\x1b[2m " + (visibleWidth(cwdDisplay) > sw - 1
+    const cwdTruncated = visibleWidth(cwdDisplay) > sw - 1
       ? "…" + cwdDisplay.slice(-(sw - 2))
-      : cwdDisplay) + "\x1b[22;23;24;39m"; // selective reset, preserves bg for padding spaces
+      : cwdDisplay;
+    const cwdLine = dim(" " + cwdTruncated);
 
     for (let row = 1; row <= rawRows; row++) {
       buf += moveCursor(row, sepCol);
-      buf += "\x1b[2m│\x1b[0m";
+      buf += dim("│");
       buf += moveCursor(row, sidebarCol);
       buf += SIDEBAR_BG;
       if (row === rawRows && cwd) {
