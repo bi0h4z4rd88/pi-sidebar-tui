@@ -29,14 +29,16 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
   }
 
   // Model
-  const hasThink = !!(ctx.model && ctx.thinkingLevel && ctx.thinkingLevel !== "off");
+  const thinkLabel = ctx.model
+    ? (ctx.thinkingLevel && ctx.thinkingLevel !== "off" ? ` - ${ctx.thinkingLevel}` : " - think off")
+    : "";
   const modelDisplay = ctx.model
-    ? truncateToWidth(ctx.model, Math.max(0, width - 10 - (hasThink ? 2 + ctx.thinkingLevel!.length : 0)), "…")
+    ? truncateToWidth(ctx.model, Math.max(0, width - 10 - thinkLabel.length), "…")
     : NA;
   lines.push(
     dim("  model ") +
     fg(ctx.model ? COLORS.accent : COLORS.muted, modelDisplay) +
-    (hasThink ? dim(` - ${ctx.thinkingLevel}`) : "")
+    (thinkLabel ? dim(thinkLabel) : "")
   );
 
   // Context
