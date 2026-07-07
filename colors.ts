@@ -11,24 +11,44 @@ function hexToAnsi(color: string): string {
   return `\x1b[38;2;${r};${g};${b}m`;
 }
 
+// ThemeColor names — matched to pi's Theme.fg() API
 export const COLORS = {
+  accent:  "accent",
+  success: "success",
+  warning: "warning",
+  header:  "text",
+  muted:   "muted",
+} as const;
+
+// Hex fallbacks used when no pi theme is injected (tests, cold start)
+const FALLBACK_HEX: Record<string, string> = {
   accent:  "#febc38",
   success: "#5faf5f",
   warning: "#ff9500",
-  header:  "#00afaf",
+  text:    "#00afaf",
   muted:   "#6c6c6c",
 };
 
+let _piTheme: any = null;
+
+export function setPiTheme(t: any): void {
+  _piTheme = t;
+}
+
 export function bold(text: string): string {
+  if (_piTheme) return _piTheme.bold(text);
   return `${BOLD}${text}${RESET}`;
 }
 
 export function dim(text: string): string {
+  if (_piTheme) return _piTheme.fg("dim", text);
   return `${DIM_CODE}${text}${RESET}`;
 }
 
-export function fg(hexColor: string, text: string): string {
-  return `${hexToAnsi(hexColor)}${text}${RESET}`;
+export function fg(colorName: string, text: string): string {
+  if (_piTheme) return _piTheme.fg(colorName, text);
+  const hex = FALLBACK_HEX[colorName] ?? "#ffffff";
+  return `${hexToAnsi(hex)}${text}${RESET}`;
 }
 
 export function formatDuration(ms: number): string {

@@ -4,6 +4,7 @@ import { renderSidebar } from "./sidebar.ts";
 import { getWorkspaceData, invalidateWorkspaceCache } from "./workspace.ts";
 import { SidebarCompositor } from "./compositor.ts";
 import { getMcpServers } from "./mcp.ts";
+import { setPiTheme } from "./colors.ts";
 
 const TOOL_LOG_MAX = 10;
 const SUBAGENT_TOOL_PATTERN = /^(task|dispatch|agent)/i;
@@ -268,6 +269,7 @@ export default function piSidebar(pi: ExtensionAPI) {
     requestRender = myRender;
 
     ui.setWidget("pi-sidebar", (tui: any, _theme: any) => {
+      setPiTheme(_theme);
       tuiRef = tui;
 
       if (sidebarEnabled) {
