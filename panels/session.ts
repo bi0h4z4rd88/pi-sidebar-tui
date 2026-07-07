@@ -5,7 +5,7 @@ import { dim, fg, COLORS, panelHeader } from "../colors.ts";
 const NA = "—";
 
 export function renderSessionPanel(ctx: SidebarContext, width: number): string[] {
-  const lines: string[] = [dim("─".repeat(Math.max(0, width))), ...panelHeader("Session", width)];
+  const lines: string[] = [...panelHeader("Session", width)];
 
   const title = ctx.sessionTitle;
   if (!title) {
