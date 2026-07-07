@@ -17,7 +17,7 @@
   "author": "bi0h4z4rd88",
   "repository": {
     "type": "git",
-    "url": "https://github.com/bi0h4z4rd88/pi-sidebar-tui.git"
+    "url": "git+https://github.com/bi0h4z4rd88/pi-sidebar-tui.git"
   },
   "license": "MIT",
   "scripts": {
