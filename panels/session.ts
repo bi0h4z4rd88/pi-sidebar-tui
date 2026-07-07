@@ -30,12 +30,14 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
 
   // Model
   const hasThink = !!(ctx.model && ctx.thinkingLevel && ctx.thinkingLevel !== "off");
-  const thinkStr = hasThink ? ` - ${ctx.thinkingLevel}` : "";
-  const modelStr = (ctx.model ?? NA) + thinkStr;
   const modelDisplay = ctx.model
-    ? truncateToWidth(modelStr, Math.max(0, width - 10), "…")
+    ? truncateToWidth(ctx.model, Math.max(0, width - 10 - (hasThink ? 2 + ctx.thinkingLevel!.length : 0)), "…")
     : NA;
-  lines.push(dim("  model ") + fg(ctx.model ? COLORS.accent : COLORS.muted, modelDisplay));
+  lines.push(
+    dim("  model ") +
+    fg(ctx.model ? COLORS.accent : COLORS.muted, modelDisplay) +
+    (hasThink ? dim(` - ${ctx.thinkingLevel}`) : "")
+  );
 
   // Context
   if (ctx.contextPercent !== null) {
