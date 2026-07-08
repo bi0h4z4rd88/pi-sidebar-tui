@@ -46,14 +46,10 @@ Displays a real-time sidebar panel inside the pi terminal UI showing session met
 ## Installation
 
 ```bash
-# Install as a pi package
-pi install bi0h4z4rd88/pi-sidebar-tui
-
-# Or clone manually into your extensions directory
-git clone https://github.com/bi0h4z4rd88/pi-sidebar-tui.git
+pi install npm:pi-sidebar-tui
 ```
 
-Add to your pi extensions config. The extension auto-registers via the `"pi"` field in `package.json`.
+The extension auto-registers via the `"pi"` field in `package.json`.
 
 ## Usage
 
