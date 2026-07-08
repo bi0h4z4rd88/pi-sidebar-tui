@@ -62,7 +62,6 @@ The sidebar activates automatically when a session starts. Toggle visibility wit
 ```
 /sidebar-tui on       # Enable sidebar
 /sidebar-tui off      # Disable sidebar
-/sidebar-tui toggle   # Toggle on/off
 /sidebar-tui width 45 # Set sidebar width (10-120)
 ```
 
