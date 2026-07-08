@@ -1,1 +1,19 @@
-node_modules
+# Dependencies
+node_modules/
+
+# Generated/lock files
+package-lock.json
+
+# Superpowers AI agent scratch space
+docs/superpowers/
+.superpowers/
+.claude/
+
+# OS / editor
+.DS_Store
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
