@@ -1,7 +1,6 @@
-import { truncateToWidth } from "@earendil-works/pi-tui";
 import type { SidebarContext, SubagentEntry } from "../types.ts";
 import {
-  dim, fg, COLORS, panelHeader,
+  dim, fg, COLORS, panelHeader, trunc,
   formatDuration, formatRelativeTime, formatTokens, spinnerFrame,
 } from "../colors.ts";
 
@@ -25,7 +24,7 @@ function renderSubagentBlock(agent: SubagentEntry, width: number): string[] {
   }
 
   const nameMax = Math.max(0, width - 2);
-  const truncName = truncateToWidth(agent.name, nameMax, "…");
+  const truncName = trunc(agent.name, nameMax);
   lines.push(`${statusGlyph} ${fg(agentNameColor, truncName)}`);
 
   if (agent.status === "completed" && agent.completedAt !== undefined) {
@@ -33,20 +32,20 @@ function renderSubagentBlock(agent: SubagentEntry, width: number): string[] {
     const ago = now - agent.completedAt;
     lines.push(dim(`  complete (${formatRelativeTime(ago)})`));
     const meta = `${agent.turns} turns · ${agent.toolCount} tools · ${formatTokens(agent.tokens)} tokens · ${formatDuration(duration)}`;
-    lines.push(dim(`  ${truncateToWidth(meta, Math.max(0, width - 2), "…")}`));
+    lines.push(dim(`  ${trunc(meta, Math.max(0, width - 2))}`));
   } else if (agent.status === "failed") {
     lines.push(dim(`  failed (${formatRelativeTime(elapsed)})`));
     const meta = `${agent.turns} turns · ${agent.toolCount} tools · ${formatTokens(agent.tokens)} tokens`;
-    lines.push(dim(`  ${truncateToWidth(meta, Math.max(0, width - 2), "…")}`));
+    lines.push(dim(`  ${trunc(meta, Math.max(0, width - 2))}`));
   } else {
     lines.push(dim(`  running (${formatDuration(elapsed)})`));
     const meta = `${agent.turns} turns · ${agent.toolCount} tools · ${formatTokens(agent.tokens)} tokens`;
-    lines.push(dim(`  ${truncateToWidth(meta, Math.max(0, width - 2), "…")}`));
+    lines.push(dim(`  ${trunc(meta, Math.max(0, width - 2))}`));
   }
 
   const recentLog = agent.toolLog.slice(-3);
   for (const entry of recentLog) {
-    lines.push(dim(`  ${truncateToWidth(entry, Math.max(0, width - 2), "…")}`));
+    lines.push(dim(`  ${trunc(entry, Math.max(0, width - 2))}`));
   }
 
   return lines;

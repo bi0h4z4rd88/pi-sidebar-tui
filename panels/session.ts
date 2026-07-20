@@ -1,6 +1,5 @@
-import { truncateToWidth } from "@earendil-works/pi-tui";
 import type { SidebarContext } from "../types.ts";
-import { dim, fg, COLORS, panelHeader } from "../colors.ts";
+import { dim, fg, COLORS, panelHeader, trunc } from "../colors.ts";
 
 const NA = "—";
 
@@ -11,7 +10,7 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
   if (!title) {
     lines.push(dim("  (waiting for first message…)"));
   } else {
-    const truncated = truncateToWidth(title, Math.max(0, width - 2), "…");
+    const truncated = trunc(title, Math.max(0, width - 2));
     lines.push(dim(`  ${truncated}`));
   }
   if (ctx.sessionId) {
@@ -23,7 +22,7 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
   // Active tool (live only)
   if (ctx.activeTool) {
     const toolElapsed = Date.now() - ctx.activeTool.startedAt;
-    const toolName = truncateToWidth(ctx.activeTool.name, Math.max(0, width - 14), "…");
+    const toolName = trunc(ctx.activeTool.name, Math.max(0, width - 14));
     lines.push(dim("  tool  ") + fg(COLORS.accent, toolName) + dim(` (${formatDuration(toolElapsed)})`));
     lines.push("");
   }
@@ -33,7 +32,7 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
     ? (ctx.thinkingLevel && ctx.thinkingLevel !== "off" ? ` - ${ctx.thinkingLevel}` : " - think off")
     : "";
   const modelDisplay = ctx.model
-    ? truncateToWidth(ctx.model, Math.max(0, width - 10 - thinkLabel.length), "…")
+    ? trunc(ctx.model, Math.max(0, width - 10 - thinkLabel.length))
     : NA;
   lines.push(
     dim("  model ") +

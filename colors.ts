@@ -1,3 +1,5 @@
+import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+
 // Selective reset: clears bold/dim/italic/underline/fg but NOT background
 const RESET = "\x1b[22;23;24;39m";
 const BOLD = "\x1b[1m";
@@ -77,6 +79,12 @@ export function spinnerFrame(): string {
 export function formatDiffStat(added: number, removed: number): string {
   if (removed > 0) return `+${added} -${removed}`;
   return `+${added}`;
+}
+
+export function trunc(text: string, max: number): string {
+  if (max <= 0) return "";
+  if (visibleWidth(text) <= max) return text;
+  return truncateToWidth(text, Math.max(0, max - 1), "") + "…";
 }
 
 export function panelHeader(title: string, width: number): string[] {

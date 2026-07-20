@@ -1,6 +1,6 @@
-import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import { visibleWidth } from "@earendil-works/pi-tui";
 import type { SidebarContext } from "../types.ts";
-import { bold, dim, fg, COLORS, formatDiffStat } from "../colors.ts";
+import { bold, dim, fg, COLORS, formatDiffStat, trunc } from "../colors.ts";
 import type { WorkspaceFile } from "../types.ts";
 
 function buildGitStatus(branch: string, ahead: number, untracked: number): string {
@@ -27,7 +27,7 @@ function renderWorkspaceHeader(ctx: SidebarContext, width: number): string[] {
   let displayStatus = gitStatus;
   if (leftLen + minPadding + rightLen > width) {
     const maxStatusLen = Math.max(0, width - leftLen - minPadding);
-    displayStatus = truncateToWidth(gitStatus, maxStatusLen, "…");
+    displayStatus = trunc(gitStatus, maxStatusLen);
   }
 
   rightLen = visibleWidth(displayStatus);
@@ -41,7 +41,7 @@ function renderFileLine(file: WorkspaceFile, width: number): string {
   const stat = formatDiffStat(file.added, file.removed);
   const statLen = visibleWidth(stat);
   const pathMax = Math.max(0, width - statLen - 1);
-  const path = truncateToWidth(file.path, pathMax, "…");
+  const path = trunc(file.path, pathMax);
   const pathLen = visibleWidth(path);
   const padding = Math.max(1, width - pathLen - statLen);
   return `${path}${" ".repeat(padding)}${fg(COLORS.success, stat)}`;

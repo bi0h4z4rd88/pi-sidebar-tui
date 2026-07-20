@@ -1,6 +1,6 @@
-import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import { visibleWidth } from "@earendil-works/pi-tui";
 import type { SidebarContext, TodoItem, TodoStatus } from "../types.ts";
-import { dim, fg, COLORS, panelHeader } from "../colors.ts";
+import { dim, fg, COLORS, panelHeader, trunc } from "../colors.ts";
 
 const GLYPHS: Record<TodoStatus, string> = {
   completed: "✓",
@@ -27,12 +27,12 @@ function renderTodoLine(todo: TodoItem, width: number): string {
     if (visibleWidth(fullText) <= contentMax) {
       return `${glyph} ${todo.content}${dim(subText)}`;
     }
-    const contentTruncated = truncateToWidth(todo.content, Math.max(0, contentMax - 4), "…");
+    const contentTruncated = trunc(todo.content, Math.max(0, contentMax - 4));
     return `${glyph} ${contentTruncated}`;
   }
 
   const contentMax = Math.max(0, width - indent);
-  const content = truncateToWidth(todo.content, contentMax, "…");
+  const content = trunc(todo.content, contentMax);
   return `${glyph} ${content}`;
 }
 
