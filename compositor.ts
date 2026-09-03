@@ -34,11 +34,20 @@ export class SidebarCompositor {
   private terminal: any;
   private getCtx: () => SidebarContext;
   private originalColumnsDesc: PropertyDescriptor | undefined;
-  private originalDoRender: (() => void) | null = null;
+  private originalColumnsOwnDesc: PropertyDescriptor | undefined;
+  private originalDoRender: ((...args: any[]) => any) | null = null;
   private originalWrite: (data: string) => void;
   private disposed = false;
 
   private readonly sidebarWidth: number;
+
+  // Last painted sidebar content, used to repaint only rows that actually
+  // changed. Prevents full-panel rewrites every frame (the flicker source).
+  private cachedLines: string[] | null = null;
+  private cachedColumns = 0;
+  private cachedRows = 0;
+  private cachedWidth = 0;
+  private cacheValid = false;
 
   constructor(tui: any, getCtx: () => SidebarContext, sidebarWidth = 40) {
     this.tui = tui;
@@ -51,8 +60,10 @@ export class SidebarCompositor {
   install(): void {
     // Narrow terminal.columns so pi renders in the left portion only.
     this.originalColumnsDesc = descriptorFor(this.terminal, "columns");
+    this.originalColumnsOwnDesc = Object.getOwnPropertyDescriptor(this.terminal, "columns");
     const origDesc = this.originalColumnsDesc;
     const terminal = this.terminal;
+    const self = this; // `this` inside the getter below is the terminal, not the compositor
 
     Object.defineProperty(terminal, "columns", {
       configurable: true,
@@ -60,75 +71,186 @@ export class SidebarCompositor {
       get() {
         const d = origDesc;
         const raw = d?.get ? (d.get.call(terminal) ?? 80) : (typeof d?.value === "number" ? d.value : 80);
-        return Math.max(1, raw - 40 - 1);
+        return Math.max(1, raw - self.sidebarWidth - 1);
       },
     });
 
-    // Paint sidebar after every pi render cycle
+    // Paint sidebar after every pi render cycle.
+    //
+    // To stop flicker we merge the sidebar into pi's own render frame instead
+    // of writing a separate frame afterwards:
+    //   - wrap the whole doRender in a single synchronized-output block
+    //     (?2026h ... ?2026l), stripping pi's own markers, so the main area and
+    //     the sidebar update atomically (no gap where the sidebar is gone);
+    //   - rewrite pi's full-line erase (\x1b[2K) into a width-limited erase
+    //     (\x1b[<mainWidth>X) so pi's renders never wipe the sidebar columns.
     if (typeof this.tui.doRender === "function") {
-      this.originalDoRender = this.tui.doRender.bind(this.tui);
+      const originalDoRender = this.tui.doRender;
+      this.originalDoRender = originalDoRender;
       const self = this;
-      this.tui.doRender = function () {
-        if (self.disposed) { self.originalDoRender?.(); return; }
-        self.originalDoRender!();
-        self.paint();
+      this.tui.doRender = function (...args: any[]) {
+        if (self.disposed) return originalDoRender.apply(this, args);
+
+        const writeOwnDesc = Object.getOwnPropertyDescriptor(terminal, "write");
+        const originalWrite = terminal.write;
+        const mainWidth = self.mainWidth();
+        let forceFullPaint = false;
+        let result: any;
+        let didThrow = false;
+        let thrown: unknown;
+
+        self.originalWrite("\x1b[?2026h"); // begin synchronized output (single frame)
+        try {
+          Object.defineProperty(terminal, "write", {
+            configurable: true,
+            enumerable: true,
+            writable: true,
+            value(this: any, data: string) {
+              if (typeof data !== "string") return originalWrite.call(this, data);
+              if (/\x1b\[(?:2J|3J)/.test(data)) forceFullPaint = true;
+              const sanitized = data
+                .replace(/\x1b\[\?2026[hl]/g, "")
+                .replace(/\x1b\[2K/g, `\x1b[${mainWidth}X`);
+              return originalWrite.call(this, sanitized);
+            },
+          });
+
+          try {
+            result = originalDoRender.apply(this, args);
+          } catch (error) {
+            didThrow = true;
+            thrown = error;
+          }
+
+          if (!didThrow) {
+            try {
+              self.paintInternal(forceFullPaint, false);
+            } catch {
+              // Sidebar painting must never break pi's render cycle.
+            }
+          }
+        } finally {
+          if (writeOwnDesc) {
+            Object.defineProperty(terminal, "write", writeOwnDesc);
+          } else {
+            Reflect.deleteProperty(terminal, "write");
+          }
+          self.originalWrite("\x1b[?2026l"); // end synchronized output
+        }
+
+        if (didThrow) throw thrown;
+        return result;
       };
     }
   }
 
   paint(): void {
-    if (this.disposed) return;
-    const rawRows = this.terminal.rows;
+    // Standalone paint (e.g. from a state-update request): its own sync frame.
+    this.paintInternal(false, true);
+  }
+
+  private rawColumns(): number {
     const d = this.originalColumnsDesc;
-    const rawCols = d?.get ? (d.get.call(this.terminal) ?? 80) : (typeof d?.value === "number" ? d.value : 80);
+    const raw = d?.get
+      ? d.get.call(this.terminal)
+      : (typeof d?.value === "number" ? d.value : undefined);
+    return typeof raw === "number" && Number.isFinite(raw) ? Math.max(1, Math.floor(raw)) : 80;
+  }
+
+  // Width of pi's main area (columns left of the separator). Used to bound the
+  // erase so the sidebar columns are never cleared.
+  private mainWidth(): number {
+    const rawCols = this.rawColumns();
+    return Math.max(1, rawCols - this.sidebarWidth - 1);
+  }
+
+  private formatLine(line: string | undefined, width: number): string {
+    const content = line === undefined ? "" : truncateToWidth(line, width, "", true);
+    const padding = Math.max(0, width - visibleWidth(content));
+    return `${SIDEBAR_BG}${content}${" ".repeat(padding)}${BG_RESET}`;
+  }
+
+  private paintInternal(forceFull: boolean, standalone: boolean): void {
+    if (this.disposed) return;
+
+    const rawRows = this.terminal.rows;
+    const rawCols = this.rawColumns();
     const sw = this.sidebarWidth;
     const sepCol = rawCols - sw;
     const sidebarCol = sepCol + 1;
+
     const ctx = this.getCtx();
     const lines = renderSidebar(ctx, sw);
 
-    let buf = "\x1b[?2026h"; // begin synchronized output
-    buf += "\x1b7";          // save cursor (DECSC)
-    buf += "\x1b[?7l";       // disable auto-wrap
-
-    // Format cwd for bottom row: collapse home dir, truncate from left if needed
-    const cwd = ctx.cwd ?? "";
+    // Build the full set of formatted lines (panel rows + bottom cwd row).
     const home = process.env["HOME"] ?? "";
+    const cwd = ctx.cwd ?? "";
     const cwdDisplay = home && cwd.startsWith(home) ? "~" + cwd.slice(home.length) : cwd;
     const cwdTruncated = visibleWidth(cwdDisplay) > sw - 1
       ? "…" + cwdDisplay.slice(-(sw - 2))
       : cwdDisplay;
     const cwdLine = dim(" " + cwdTruncated);
 
+    const formattedLines: string[] = [];
     for (let row = 1; row <= rawRows; row++) {
+      if (row === rawRows && cwd) {
+        formattedLines.push(this.formatLine(cwdLine, sw));
+      } else {
+        formattedLines.push(this.formatLine(lines[row - 1], sw));
+      }
+    }
+
+    // Repaint only rows that changed since the last paint. Skip the write
+    // entirely when nothing changed — the core flicker fix.
+    const dimensionsChanged = this.cachedColumns !== rawCols
+      || this.cachedRows !== rawRows
+      || this.cachedWidth !== sw;
+    const shouldPaintAll = forceFull || !this.cacheValid || dimensionsChanged;
+    const rows = shouldPaintAll
+      ? formattedLines.map((_, index) => index)
+      : formattedLines.reduce<number[]>((changed, line, index) => {
+          if (this.cachedLines?.[index] !== line) changed.push(index);
+          return changed;
+        }, []);
+
+    if (rows.length === 0) return;
+
+    let buf = standalone ? "\x1b[?2026h" : "";
+    buf += "\x1b7";          // save cursor (DECSC)
+    buf += "\x1b[?7l";       // disable auto-wrap
+
+    for (const index of rows) {
+      const row = index + 1;
       buf += moveCursor(row, sepCol);
       buf += dim("│");
       buf += moveCursor(row, sidebarCol);
-      buf += SIDEBAR_BG;
-      if (row === rawRows && cwd) {
-        buf += truncateToWidth(cwdLine, sw, "", true);
-      } else {
-        const line = lines[row - 1];
-        buf += line !== undefined
-          ? truncateToWidth(line, sw, "", true)
-          : " ".repeat(sw);
-      }
-      buf += BG_RESET;
+      buf += formattedLines[index];
     }
 
     buf += "\x1b[?7h";       // enable auto-wrap
     buf += "\x1b8";          // restore cursor (DECRC)
-    buf += "\x1b[?2026l";    // end synchronized output
+    if (standalone) buf += "\x1b[?2026l"; // end synchronized output
 
-    this.originalWrite(buf);
+    try {
+      this.originalWrite(buf);
+    } catch {
+      this.cacheValid = false;
+      return;
+    }
+
+    this.cachedLines = formattedLines;
+    this.cachedColumns = rawCols;
+    this.cachedRows = rawRows;
+    this.cachedWidth = sw;
+    this.cacheValid = true;
   }
 
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
 
-    if (this.originalColumnsDesc) {
-      Object.defineProperty(this.terminal, "columns", this.originalColumnsDesc);
+    if (this.originalColumnsOwnDesc) {
+      Object.defineProperty(this.terminal, "columns", this.originalColumnsOwnDesc);
     } else {
       Reflect.deleteProperty(this.terminal, "columns");
     }

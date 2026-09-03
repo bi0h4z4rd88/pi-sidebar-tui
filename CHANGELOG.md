@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.6.1] - 2026-09-03
+
+### Changed
+
+- **Sidebar toggle shortcut moved to `Ctrl+Shift+S`**: `Ctrl+I` shares its terminal byte with Tab, so pressing Tab also toggled the sidebar. `Ctrl+Shift+S` is unambiguous on terminals with Kitty keyboard-protocol or modifyOtherKeys support (pi negotiates the Kitty protocol at startup).
+
+### Fixed
+
+- **Sidebar flicker/lag while processing data**: The compositor now repaints only the sidebar rows that actually changed (skipping the write entirely when nothing changed) and paints the sidebar inside pi's own render cycle as a single synchronized-output frame. pi's full-line erase (`\x1b[2K`) is bounded to the main-area width so its renders no longer wipe the sidebar columns — the primary cause of the flicker while tokens/tools stream.
+
 ## [1.6.0] - 2026-09-03
 
 ### Added

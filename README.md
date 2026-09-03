@@ -60,7 +60,7 @@ The sidebar activates automatically when a session starts. Toggle visibility wit
 /sidebar-tui off      # Disable sidebar
 /sidebar-tui width 45 # Set sidebar width (10-120)
 
-Ctrl+I                 # Toggle sidebar on/off (rebind in ~/.pi/agent/keybindings.json)
+Ctrl+Shift+S           # Toggle sidebar on/off (rebind in ~/.pi/agent/keybindings.json)
 ```
 
 Set custom session title:
