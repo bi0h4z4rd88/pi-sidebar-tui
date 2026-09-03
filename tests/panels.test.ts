@@ -80,6 +80,48 @@ test("session panel: header line contains 'Session'", () => {
   assert.ok(lines.map(strip).some(l => l.includes("Session")));
 });
 
+// ─── Session panel: context bar ───────────────────────────────────────────────
+
+test("session panel: context renders as fill bar with rounded pct label", () => {
+  const ctx = makeCtx({ contextPercent: 40, contextTokens: 80000, contextWindow: 200000 });
+  const text = renderSessionPanel(ctx, 40).map(strip).join("\n");
+  assert.ok(text.includes("█"), `missing fill bar, got: ${text}`);
+  assert.ok(text.includes("40%"), `missing rounded pct label, got: ${text}`);
+});
+
+test("session panel: context detail line shows token counts + unit", () => {
+  const ctx = makeCtx({ contextPercent: 40, contextTokens: 80000, contextWindow: 200000 });
+  const text = renderSessionPanel(ctx, 40).map(strip).join("\n");
+  assert.ok(text.includes("80k / 200k"), `missing token counts, got: ${text}`);
+  assert.ok(text.includes("tokens"), `missing 'tokens' unit, got: ${text}`);
+});
+
+test("session panel: context detail line includes auto-compact status", () => {
+  const ctx = makeCtx({ contextPercent: 40, contextTokens: 80000, contextWindow: 200000, autoCompactEnabled: true });
+  const text = renderSessionPanel(ctx, 40).map(strip).join("\n");
+  assert.ok(text.includes("auto-compact on"), `missing auto-compact status, got: ${text}`);
+});
+
+test("session panel: context bar fits within width at high usage", () => {
+  const ctx = makeCtx({ contextPercent: 95, contextTokens: 190000, contextWindow: 200000 });
+  const lines = renderSessionPanel(ctx, 30);
+  for (const line of lines) {
+    assert.ok(visibleWidth(strip(line)) <= 30, `line too wide: "${strip(line)}"`);
+  }
+});
+
+test("session panel: context bar leaves 2 cols clear on the right", () => {
+  const ctx = makeCtx({ contextPercent: 95, contextTokens: 190000, contextWindow: 200000 });
+  const barLine = renderSessionPanel(ctx, 40).map(strip).find(l => l.includes("█"));
+  assert.ok(barLine !== undefined, "no bar line found");
+  assert.equal(visibleWidth(barLine), 38, `bar line should leave 2 cols clear, got width ${visibleWidth(barLine)}`);
+});
+
+test("session panel: no bar when context data absent", () => {
+  const text = renderSessionPanel(makeCtx({}), 40).map(strip).join("\n");
+  assert.ok(!text.includes("█"), `bar should not render without context, got: ${text}`);
+});
+
 // ─── Todos panel ─────────────────────────────────────────────────────────────
 
 test("todos panel: empty shows (no todos)", () => {

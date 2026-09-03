@@ -40,17 +40,33 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
     (thinkLabel ? dim(thinkLabel) : "")
   );
 
-  // Context
+  // Context — window usage as a fill bar
   if (ctx.contextPercent !== null) {
     const pct = ctx.contextPercent;
     const tokens = ctx.contextTokens !== null ? formatK(ctx.contextTokens) : "?";
     const win = ctx.contextWindow !== null ? formatK(ctx.contextWindow) : "?";
-    const ctxColor = pct > 90 ? COLORS.warning : pct > 70 ? COLORS.accent : COLORS.header;
-    lines.push(dim("  ctx   ") + fg(ctxColor, `${tokens} / ${win}`) + dim(` (${pct.toFixed(1)}%)`));
-    if (ctx.autoCompactEnabled !== null) {
-      const compactColor = pct > 70 ? COLORS.warning : COLORS.muted;
-      lines.push(dim("  ") + fg(compactColor, ctx.autoCompactEnabled ? "auto-compact on" : "auto-compact off"));
-    }
+    const ctxColor = pct > 90 ? COLORS.warning : pct > 70 ? COLORS.accent : COLORS.success;
+
+    const prefix = "  ctx   ";
+    const pctLabel = `${Math.round(pct)}%`;
+    const gap = 1;
+    const rightPad = 2; // keep 2 cols clear on the right edge
+    const barWidth = Math.max(4, width - rightPad - prefix.length - gap - pctLabel.length);
+    const clamped = Math.max(0, Math.min(100, pct));
+    const filled = Math.round((clamped / 100) * barWidth);
+    const empty = Math.max(0, barWidth - filled);
+
+    lines.push(
+      dim(prefix) +
+      fg(ctxColor, "█".repeat(filled)) +
+      dim("░".repeat(empty)) +
+      " " +
+      fg(ctxColor, pctLabel)
+    );
+
+    const compact = ctx.autoCompactEnabled === null ? ""
+      : ctx.autoCompactEnabled ? " · auto-compact on" : " · auto-compact off";
+    lines.push(dim(`${" ".repeat(prefix.length)}${tokens} / ${win} tokens${compact}`));
   } else {
     lines.push(dim("  ctx   ") + fg(COLORS.muted, NA));
   }

@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.6.0] - 2026-09-03
+
+### Added
+
+- **Context usage progress bar**: The Session panel's context line is now a fill bar driven by live context-window usage — green below 70%, yellow 70-90%, red above 90% — with the token count and auto-compact status on a second line. Replaces the plain `tokens / window (pct%)` text.
+
 ## [1.5.2] - 2026-08-24
 
 ### Changed

@@ -1,6 +1,6 @@
 {
   "name": "pi-sidebar-tui",
-  "version": "1.5.2",
+  "version": "1.6.0",
   "description": "Sidebar TUI extension for pi coding agent",
   "type": "module",
   "files": [
