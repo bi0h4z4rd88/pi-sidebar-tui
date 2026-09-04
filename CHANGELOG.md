@@ -2,7 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.6.1] - 2026-09-03
+## [Unreleased]
+
+### Added
+
+- **Context "turns left" estimate**: The session stats grid now shows a `left` row (under `turns`) estimating how many turns remain before the context window fills, based on recent context growth (first/last of a 10-turn sample buffer). Shows `≈Nt` colored by urgency (muted ≥20t, accent 5–19t, warning red <5t), `∞` when context is flat, or `—` until enough data. The context fill bar is now pace-aware too: it escalates to accent/warning when the estimate is <20t/<5t even if raw percentage is low.
+
+### Changed
+
+- **Session stats grid rebalanced**: `cost` moved to the Tokens column (under `cache`) so the context estimate pairs with `turns` in the Stats column; both columns are now 5 rows.
 
 ### Changed
 

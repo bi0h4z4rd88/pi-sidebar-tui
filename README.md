@@ -11,7 +11,8 @@ Displays a real-time sidebar panel inside the pi terminal UI showing session met
 - Session elapsed time (updated every 30 seconds)
 - Active tool indicator with live elapsed timer
 - Current model name with thinking level (`think:high`, `think:medium`, etc.)
-- Context window usage: `tokens / max_window (pct%)`
+- Context window usage: `tokens / max_window (pct%)` — fill bar escalates color by usage **and** by pace
+- Context estimate: `left ≈Nt` — turns remaining until the window fills at recent growth rate (`∞` when flat, `—` until enough data); colored muted ≥20t / accent 5–19t / warning red <5t
 - Auto-compact status indicator
 - Token input/output totals + session cost
 - Cache hit percentage + turn count

@@ -1,6 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { loadSidebarSettings, saveSidebarSettings } from "./config.ts";
-import type { TodoItem, SubagentEntry, SidebarContext, McpServerInfo } from "./types.ts";
+import type { TodoItem, SubagentEntry, SidebarContext, McpServerInfo, CtxSample } from "./types.ts";
 import { renderSidebar } from "./sidebar.ts";
 import { getWorkspaceData, invalidateWorkspaceCache } from "./workspace.ts";
 import { SidebarCompositor } from "./compositor.ts";
@@ -41,7 +41,9 @@ let msgStartMs: number | null = null;
 let liveTps: number | null = null;
 let lastTps: number | null = null;
 let lastTurnMs: number | null = null;
+let ctxSamples: CtxSample[] = [];
 let tpsSamples: { t: number; tokens: number }[] = [];
+const CTX_SAMPLE_MAX = 10;
 const TPS_WINDOW_MS = 2000;
 let sessionTimerHandle: ReturnType<typeof setInterval> | null = null;
 
@@ -146,7 +148,18 @@ function buildSidebarContext(cwd: string | undefined): SidebarContext {
     liveTps,
     lastTps,
     lastTurnMs,
+    ctxSamples,
   };
+}
+
+function recordCtxSample(tokens: number): void {
+  const last = ctxSamples[ctxSamples.length - 1];
+  if (last && last.turns === turnCount) {
+    last.tokens = tokens; // dedupe: one sample per turn
+  } else {
+    ctxSamples.push({ tokens, turns: turnCount });
+    if (ctxSamples.length > CTX_SAMPLE_MAX) ctxSamples.shift();
+  }
 }
 
 function updateContextUsage(ctx: any): void {
@@ -156,6 +169,7 @@ function updateContextUsage(ctx: any): void {
       contextTokens = typeof usage.tokens === "number" ? usage.tokens : null;
       contextPercent = typeof usage.percent === "number" ? usage.percent : null;
       contextWindow = typeof usage.contextWindow === "number" ? usage.contextWindow : null;
+      if (contextTokens !== null) recordCtxSample(contextTokens);
     }
     const model = ctx.model;
     if (model?.name) currentModel = model.name;
@@ -238,6 +252,7 @@ export default function piSidebar(pi: ExtensionAPI) {
     contextTokens = null;
     contextPercent = null;
     contextWindow = null;
+    ctxSamples = [];
     mcpServers = getMcpServers();
     sessionStartMs = Date.now();
     if (sessionTimerHandle) { clearInterval(sessionTimerHandle); sessionTimerHandle = null; }
@@ -337,6 +352,7 @@ export default function piSidebar(pi: ExtensionAPI) {
     liveTps = null;
     lastTps = null;
     lastTurnMs = null;
+    ctxSamples = [];
     tpsSamples = [];
     sessionTitle = null;
     todos = [];

@@ -35,6 +35,16 @@ export interface McpServerInfo {
   connected: boolean;
 }
 
+export interface CtxSample {
+  tokens: number;
+  turns: number;
+}
+
+export type CtxLeft =
+  | { kind: "unknown" }
+  | { kind: "stable" }
+  | { kind: "left"; turns: number };
+
 export interface SidebarContext {
   sessionTitle: string | null;
   sessionId: string | null;
@@ -64,4 +74,5 @@ export interface SidebarContext {
   liveTps: number | null;
   lastTps: number | null;
   lastTurnMs: number | null;
+  ctxSamples: CtxSample[];
 }

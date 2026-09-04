@@ -1,7 +1,25 @@
-import type { SidebarContext } from "../types.ts";
+import type { SidebarContext, CtxSample, CtxLeft } from "../types.ts";
 import { dim, fg, COLORS, panelHeader, trunc } from "../colors.ts";
 
 const NA = "—";
+
+export function estimateCtxLeft(
+  samples: CtxSample[],
+  contextTokens: number | null,
+  contextWindow: number | null,
+): CtxLeft {
+  if (samples.length < 2 || contextTokens === null || contextWindow === null) {
+    return { kind: "unknown" };
+  }
+  const first = samples[0];
+  const last = samples[samples.length - 1];
+  const dTurns = last.turns - first.turns;
+  if (dTurns <= 0) return { kind: "unknown" };
+  const rate = (last.tokens - first.tokens) / dTurns;
+  if (rate <= 0) return { kind: "stable" };
+  const remaining = Math.max(0, contextWindow - contextTokens);
+  return { kind: "left", turns: Math.floor(remaining / rate) };
+}
 
 export function renderSessionPanel(ctx: SidebarContext, width: number): string[] {
   const lines: string[] = [...panelHeader("Session", width)];
@@ -40,12 +58,20 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
     (thinkLabel ? dim(thinkLabel) : "")
   );
 
+  const ctxEst = estimateCtxLeft(ctx.ctxSamples, ctx.contextTokens, ctx.contextWindow);
+
   // Context — window usage as a fill bar
   if (ctx.contextPercent !== null) {
     const pct = ctx.contextPercent;
     const tokens = ctx.contextTokens !== null ? formatK(ctx.contextTokens) : "?";
     const win = ctx.contextWindow !== null ? formatK(ctx.contextWindow) : "?";
-    const ctxColor = pct > 90 ? COLORS.warning : pct > 70 ? COLORS.accent : COLORS.success;
+    // Pace-aware severity: estimate drives escalation (e.g. 40% but 3 turns to full)
+    const estSeverity = ctxEst.kind === "left"
+      ? (ctxEst.turns < 5 ? 2 : ctxEst.turns < 20 ? 1 : 0)
+      : 0;
+    const pctSeverity = pct > 90 ? 2 : pct > 70 ? 1 : 0;
+    const sev = Math.max(estSeverity, pctSeverity);
+    const ctxColor = sev === 2 ? COLORS.warning : sev === 1 ? COLORS.accent : COLORS.success;
 
     const prefix = "  ctx   ";
     const pctLabel = `${Math.round(pct)}%`;
@@ -74,20 +100,26 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
   lines.push("");
 
   // Two-column stats
-  // Col1: time, last, speed, cost, turns
-  // Col2: in, out, total, cache
+  // Col1: time, last, speed, turns, left
+  // Col2: in, out, total, cache, cost
   const elapsed = Date.now() - ctx.sessionStartMs;
   const avgTps = ctx.liveTps ?? ctx.lastTps;
   const tokenTotal = ctx.tokensIn + ctx.tokensOut + ctx.cacheRead + ctx.cacheWrite;
   const totalIn = ctx.tokensIn + ctx.cacheRead;
   const cacheHitPct = totalIn > 0 ? Math.round((ctx.cacheRead / totalIn) * 100) : null;
 
-  const col1: [string, string][] = [
-    ["time", elapsed >= 1000 ? formatDuration(elapsed) : NA],
-    ["last", ctx.lastTurnMs !== null ? formatDuration(ctx.lastTurnMs) : NA],
-    ["speed", avgTps !== null ? `${avgTps} tok/s` : NA],
-    ["turns", ctx.turnCount > 0 ? String(ctx.turnCount) : NA],
-    ["cost", ctx.sessionCost > 0 ? `$${ctx.sessionCost.toFixed(3)}` : NA],
+  const leftValue = ctxEst.kind === "left" ? `≈${ctxEst.turns}t` : ctxEst.kind === "stable" ? "∞" : NA;
+  const leftColor = ctxEst.kind !== "left" ? COLORS.muted
+    : ctxEst.turns < 5 ? COLORS.warning
+    : ctxEst.turns < 20 ? COLORS.accent
+    : COLORS.muted;
+
+  const col1: [string, string, string][] = [
+    ["time", elapsed >= 1000 ? formatDuration(elapsed) : NA, COLORS.muted],
+    ["last", ctx.lastTurnMs !== null ? formatDuration(ctx.lastTurnMs) : NA, COLORS.muted],
+    ["speed", avgTps !== null ? `${avgTps} tok/s` : NA, COLORS.muted],
+    ["turns", ctx.turnCount > 0 ? String(ctx.turnCount) : NA, COLORS.muted],
+    ["left", leftValue, leftColor],
   ];
 
   const col2: [string, string][] = [
@@ -95,6 +127,7 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
     ["out", ctx.tokensOut > 0 ? formatK(ctx.tokensOut) : NA],
     ["total", tokenTotal > 0 ? formatK(tokenTotal) : NA],
     ["cache", cacheHitPct !== null && cacheHitPct > 0 ? `${cacheHitPct}%` : NA],
+    ["cost", ctx.sessionCost > 0 ? `$${ctx.sessionCost.toFixed(3)}` : NA],
   ];
 
   const usable = Math.max(0, width - 2);
@@ -111,12 +144,12 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
 
   const rowCount = Math.max(col1.length, col2.length);
   for (let i = 0; i < rowCount; i++) {
-    const [l1, v1] = col1[i] ?? ["", ""];
+    const [l1, v1, c1] = col1[i] ?? ["", "", COLORS.muted];
     const [l2, v2] = col2[i] ?? ["", ""];
     const v1s = v1.slice(0, v1W).padEnd(v1W);
     const v2s = v2.slice(0, v2W);
     lines.push(
-      dim("  " + l1.padEnd(5) + " ") + fg(COLORS.muted, v1s) +
+      dim("  " + l1.padEnd(5) + " ") + fg(c1, v1s) +
       dim(l2.padEnd(5) + " ") + fg(COLORS.muted, v2s)
     );
   }

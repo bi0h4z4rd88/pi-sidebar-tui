@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { visibleWidth } from "@earendil-works/pi-tui";
 import type { SidebarContext, TodoItem, SubagentEntry, WorkspaceFile } from "../types.ts";
-import { renderSessionPanel } from "../panels/session.ts";
+import { renderSessionPanel, estimateCtxLeft } from "../panels/session.ts";
 import { renderTodosPanel } from "../panels/todos.ts";
 import { renderSubagentsPanel } from "../panels/subagents.ts";
 import { renderWorkspacePanel } from "../panels/workspace.ts";
@@ -41,6 +41,7 @@ function makeCtx(overrides: Partial<SidebarContext> = {}): SidebarContext {
     liveTps: null,
     lastTps: null,
     lastTurnMs: null,
+    ctxSamples: [],
     ...overrides,
   };
 }
@@ -120,6 +121,174 @@ test("session panel: context bar leaves 2 cols clear on the right", () => {
 test("session panel: no bar when context data absent", () => {
   const text = renderSessionPanel(makeCtx({}), 40).map(strip).join("\n");
   assert.ok(!text.includes("█"), `bar should not render without context, got: ${text}`);
+});
+
+// ─── Session panel: context estimate ──────────────────────────────────────────
+
+const S = (tokens: number, turns: number) => ({ tokens, turns });
+
+test("estimateCtxLeft: unknown with fewer than 2 samples", () => {
+  assert.deepEqual(estimateCtxLeft([], 100000, 200000), { kind: "unknown" });
+  assert.deepEqual(estimateCtxLeft([S(100, 1)], 100000, 200000), { kind: "unknown" });
+});
+
+test("estimateCtxLeft: unknown when turn count does not advance", () => {
+  assert.deepEqual(estimateCtxLeft([S(100, 5), S(200, 5)], 100000, 200000), { kind: "unknown" });
+});
+
+test("estimateCtxLeft: unknown without context data", () => {
+  assert.deepEqual(estimateCtxLeft([S(100, 1), S(200, 2)], null, 200000), { kind: "unknown" });
+  assert.deepEqual(estimateCtxLeft([S(100, 1), S(200, 2)], 100000, null), { kind: "unknown" });
+});
+
+test("estimateCtxLeft: stable when context not growing", () => {
+  assert.deepEqual(estimateCtxLeft([S(100, 1), S(100, 5)], 100000, 200000), { kind: "stable" });
+  assert.deepEqual(estimateCtxLeft([S(200, 1), S(100, 5)], 100000, 200000), { kind: "stable" });
+});
+
+test("estimateCtxLeft: computes turns remaining from recent pace", () => {
+  // pace: (400-200)/(4-2) = 100 tokens/turn; remaining 50000 → 500 turns
+  assert.deepEqual(estimateCtxLeft([S(200, 2), S(400, 4)], 150000, 200000), { kind: "left", turns: 500 });
+});
+
+test("estimateCtxLeft: pace from first/last of buffer, middle noise ignored", () => {
+  // pace: (300-100)/(3-0) = 66.7/turn; remaining 100000 → 1500
+  const r = estimateCtxLeft([S(100, 0), S(5000, 1), S(150, 2), S(300, 3)], 100000, 200000);
+  assert.deepEqual(r, { kind: "left", turns: 1500 });
+});
+
+test("estimateCtxLeft: full window yields 0 turns left", () => {
+  assert.deepEqual(estimateCtxLeft([S(100, 1), S(300, 2)], 200000, 200000), { kind: "left", turns: 0 });
+});
+
+// ─── Session panel: left / cost rows ─────────────────────────────────────────
+
+// Fallback hex codes (no pi theme in tests): muted=#6c6c6c accent=#febc38 warning=#ff9500
+const HEX_MUTED = "38;2;108;108;108";
+const HEX_ACCENT = "38;2;254;188;56";
+const HEX_WARNING = "38;2;255;149;0";
+
+function leftRow(ctx: SidebarContext, width = 40): { raw: string; text: string } | undefined {
+  const lines = renderSessionPanel(ctx, width);
+  const i = lines.findIndex(l => strip(l).includes("left"));
+  return i === -1 ? undefined : { raw: lines[i], text: strip(lines[i]) };
+}
+
+function makeCtxEst(overrides: Partial<SidebarContext> = {}): SidebarContext {
+  return makeCtx({
+    contextTokens: 190000,
+    contextWindow: 200000,
+    contextPercent: 95,
+    turnCount: 2,
+    tokensIn: 1000,
+    cacheRead: 870,
+    sessionCost: 1.234,
+    ctxSamples: [S(187500, 1), S(190000, 2)], // pace 2500/turn, remaining 10000 → 4 turns
+    ...overrides,
+  });
+}
+
+test("session panel: left row shows estimated turns with ≈Nt value", () => {
+  const row = leftRow(makeCtxEst());
+  assert.ok(row, "no left row found");
+  assert.ok(row!.text.includes("≈4t"), `expected ≈4t, got: "${row!.text}"`);
+});
+
+test("session panel: left row value is warning red when < 5 turns", () => {
+  const row = leftRow(makeCtxEst());
+  assert.ok(row, "no left row found");
+  assert.ok(row!.raw.includes(HEX_WARNING), `expected warning color, got: "${row!.raw}"`);
+});
+
+test("session panel: left row value is accent when 5-19 turns", () => {
+  // pace 625/turn → remaining 10000 → 16 turns
+  const row = leftRow(makeCtxEst({ ctxSamples: [S(100000, 0), S(100625, 1)] }));
+  assert.ok(row, "no left row found");
+  assert.ok(row!.text.includes("≈16t"), `expected ≈16t, got: "${row!.text}"`);
+  assert.ok(row!.raw.includes(HEX_ACCENT), `expected accent color, got: "${row!.raw}"`);
+});
+
+test("session panel: left row value is muted when >= 20 turns", () => {
+  // pace 250/turn → remaining 10000 → 40 turns
+  const row = leftRow(makeCtxEst({ ctxSamples: [S(100000, 0), S(100250, 1)] }));
+  assert.ok(row, "no left row found");
+  assert.ok(row!.text.includes("≈40t"), `expected ≈40t, got: "${row!.text}"`);
+  assert.ok(row!.raw.includes(HEX_MUTED), `expected muted color, got: "${row!.raw}"`);
+});
+
+test("session panel: left row shows NA when no samples", () => {
+  const row = leftRow(makeCtxEst({ ctxSamples: [] }));
+  assert.ok(row, "no left row found");
+  assert.ok(row!.text.includes("—"), `expected NA, got: "${row!.text}"`);
+});
+
+test("session panel: left row shows infinity when pace flat", () => {
+  const row = leftRow(makeCtxEst({ ctxSamples: [S(100000, 1), S(100000, 5)] }));
+  assert.ok(row, "no left row found");
+  assert.ok(row!.text.includes("∞"), `expected ∞, got: "${row!.text}"`);
+});
+
+test("session panel: cost row sits under cache row (col2 order)", () => {
+  const lines = renderSessionPanel(makeCtxEst(), 40).map(strip);
+  const cacheIdx = lines.findIndex(l => l.includes("cache"));
+  const costIdx = lines.findIndex(l => l.includes("cost"));
+  assert.ok(cacheIdx !== -1 && costIdx !== -1, "cache/cost rows missing");
+  assert.ok(costIdx > cacheIdx, `expected cost under cache (cache=${cacheIdx}, cost=${costIdx})`);
+  const costLine = lines[costIdx];
+  assert.ok(costLine.includes("$1.234"), `cost value missing, got: "${costLine}"`);
+});
+
+test("session panel: left row sits under turns row (col1 order)", () => {
+  const lines = renderSessionPanel(makeCtxEst(), 40).map(strip);
+  const turnsIdx = lines.findIndex(l => l.includes("turns"));
+  const leftIdx = lines.findIndex(l => l.includes("left"));
+  assert.ok(turnsIdx !== -1 && leftIdx !== -1, "turns/left rows missing");
+  assert.ok(leftIdx > turnsIdx, `expected left under turns (turns=${turnsIdx}, left=${leftIdx})`);
+});
+
+// ─── Session panel: pace-aware context bar ───────────────────────────────────
+
+function barLine(ctx: SidebarContext, width = 40): string | undefined {
+  return renderSessionPanel(ctx, width).find(l => strip(l).includes("█"));
+}
+
+const HEX_SUCCESS = "38;2;95;175;95";
+
+test("ctx bar: escalates to warning when estimate < 5 turns despite low pct", () => {
+  // pct 40 (would be success) but pace 2500/turn, remaining 10000 → 4 turns
+  const ctx = makeCtxEst({ contextTokens: 190000, contextPercent: 40, ctxSamples: [S(187500, 1), S(190000, 2)] });
+  const bar = barLine(ctx);
+  assert.ok(bar, "no bar line");
+  assert.ok(bar!.includes(HEX_WARNING), `expected warning bar, got: "${bar}"`);
+});
+
+test("ctx bar: escalates to accent when estimate 5-19 turns", () => {
+  const ctx = makeCtxEst({ contextPercent: 40, ctxSamples: [S(100000, 0), S(100625, 1)] }); // 16 turns
+  const bar = barLine(ctx);
+  assert.ok(bar, "no bar line");
+  assert.ok(bar!.includes(HEX_ACCENT), `expected accent bar, got: "${bar}"`);
+});
+
+test("ctx bar: stays success when estimate >= 20 turns and pct low", () => {
+  const ctx = makeCtxEst({ contextPercent: 40, ctxSamples: [S(100000, 0), S(100250, 1)] }); // 40 turns
+  const bar = barLine(ctx);
+  assert.ok(bar, "no bar line");
+  assert.ok(bar!.includes(HEX_SUCCESS), `expected success bar, got: "${bar}"`);
+});
+
+test("ctx bar: pct-based warning still applies without samples", () => {
+  const ctx = makeCtxEst({ contextPercent: 95, ctxSamples: [] });
+  const bar = barLine(ctx);
+  assert.ok(bar, "no bar line");
+  assert.ok(bar!.includes(HEX_WARNING), `expected warning bar, got: "${bar}"`);
+});
+
+test("session panel: left row fits width at narrow sidebar", () => {
+  const ctx = makeCtxEst();
+  const lines = renderSessionPanel(ctx, 30);
+  for (const line of lines) {
+    assert.ok(visibleWidth(strip(line)) <= 30, `line too wide: "${strip(line)}"`);
+  }
 });
 
 // ─── Todos panel ─────────────────────────────────────────────────────────────
