@@ -1,10 +1,11 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { loadSidebarSettings, saveSidebarSettings } from "./config.ts";
-import type { TodoItem, SubagentEntry, SidebarContext, McpServerInfo, CtxSample } from "./types.ts";
+import type { TodoItem, SubagentEntry, SidebarContext, CtxSample } from "./types.ts";
+import { parseTodos, reconstructTodosFromBranch } from "./parse-todos.ts";
 import { renderSidebar } from "./sidebar.ts";
 import { getWorkspaceData, invalidateWorkspaceCache } from "./workspace.ts";
 import { SidebarCompositor } from "./compositor.ts";
-import { getMcpServers } from "./mcp.ts";
+import { getMcpServers, invalidateMcpCache } from "./mcp.ts";
 import { setPiTheme } from "./colors.ts";
 
 const TOOL_LOG_MAX = 10;
@@ -34,7 +35,6 @@ let turnCount = 0;
 let activeTool: { name: string; startedAt: number } | null = null;
 let autoCompactEnabled: boolean | null = null;
 let sessionStartMs = Date.now();
-let mcpServers: McpServerInfo[] = [];
 let modelProvider: string | null = null;
 let agentStartMs: number | null = null;
 let msgStartMs: number | null = null;
@@ -46,6 +46,7 @@ let tpsSamples: { t: number; tokens: number }[] = [];
 const CTX_SAMPLE_MAX = 10;
 const TPS_WINDOW_MS = 2000;
 let sessionTimerHandle: ReturnType<typeof setInterval> | null = null;
+let unsubscribeMcpStatus: (() => void) | null = null;
 
 function inferThinkingLevel(sm: any): string | null {
   try {
@@ -143,7 +144,7 @@ function buildSidebarContext(cwd: string | undefined): SidebarContext {
     activeTool,
     autoCompactEnabled,
     sessionStartMs,
-    mcpServers,
+    mcpServers: getMcpServers(),
     modelProvider,
     liveTps,
     lastTps,
@@ -178,33 +179,6 @@ function updateContextUsage(ctx: any): void {
   } catch {
     // ignore
   }
-}
-
-function parseTodos(input: unknown): TodoItem[] | null {
-  if (!input || typeof input !== "object") return null;
-
-  const obj = input as Record<string, unknown>;
-  const raw = obj["todos"] ?? obj["items"] ?? obj["list"] ?? input;
-  if (!Array.isArray(raw)) return null;
-
-  const result: TodoItem[] = [];
-  for (const item of raw) {
-    if (!item || typeof item !== "object") continue;
-    const i = item as Record<string, unknown>;
-    const content = typeof i["content"] === "string" ? i["content"] :
-                    typeof i["text"] === "string" ? i["text"] : null;
-    const status = typeof i["status"] === "string" ? i["status"] : "pending";
-    const id = typeof i["id"] === "string" ? i["id"] : String(result.length);
-    const subAction = typeof i["subAction"] === "string" ? i["subAction"] : undefined;
-    if (!content) continue;
-
-    const normalizedStatus =
-      status === "in_progress" || status === "active" ? "in_progress" :
-      status === "completed" || status === "done" ? "completed" : "pending";
-
-    result.push({ id, content, status: normalizedStatus, subAction });
-  }
-  return result;
 }
 
 function extractSubagentName(input: unknown): string {
@@ -244,7 +218,9 @@ export default function piSidebar(pi: ExtensionAPI) {
   pi.on("session_start", async (_event, ctx) => {
     sessionManager = ctx.sessionManager;
     sessionTitle = ctx.sessionManager.getSessionName() ?? inferSessionTitle(ctx.sessionManager) ?? null;
-    todos = [];
+    // Seed todos from session history so the panel is correct on resume/branch
+    // (pi-todo stores a full snapshot in each `todo` tool result's details).
+    todos = reconstructTodosFromBranch(sessionManager?.getBranch?.() ?? []);
     subagentsMap.clear();
     activeSubagentId = null;
     currentModel = null;
@@ -253,7 +229,6 @@ export default function piSidebar(pi: ExtensionAPI) {
     contextPercent = null;
     contextWindow = null;
     ctxSamples = [];
-    mcpServers = getMcpServers();
     sessionStartMs = Date.now();
     if (sessionTimerHandle) { clearInterval(sessionTimerHandle); sessionTimerHandle = null; }
     sessionTimerHandle = setInterval(() => requestRender?.(), 30_000);
@@ -305,6 +280,18 @@ export default function piSidebar(pi: ExtensionAPI) {
     const myRender = scheduleRender;
     requestRender = myRender;
 
+    // Keep MCP status live: the MCP adapter publishes a runtime snapshot on the
+    // shared event bus whenever server state changes (enable/disable, connect,
+    // fail, auth). Invalidate the file cache and repaint so the panel updates
+    // directly instead of waiting for the next session.
+    if (pi.events) {
+      if (unsubscribeMcpStatus) { unsubscribeMcpStatus(); unsubscribeMcpStatus = null; }
+      unsubscribeMcpStatus = pi.events.on("pi-mcp-adapter/status/v1", () => {
+        invalidateMcpCache();
+        requestRender?.();
+      });
+    }
+
     ui.setWidget("pi-sidebar", (tui: any, _theme: any) => {
       setPiTheme(_theme);
       tuiRef = tui;
@@ -340,6 +327,7 @@ export default function piSidebar(pi: ExtensionAPI) {
 
   pi.on("session_shutdown", async () => {
     if (sessionTimerHandle) { clearInterval(sessionTimerHandle); sessionTimerHandle = null; }
+    if (unsubscribeMcpStatus) { unsubscribeMcpStatus(); unsubscribeMcpStatus = null; }
     tokensIn = 0;
     tokensOut = 0;
     cacheRead = 0;
@@ -424,6 +412,17 @@ export default function piSidebar(pi: ExtensionAPI) {
 
     if (WRITE_TOOLS.has(toolName.toLowerCase())) {
       invalidateWorkspaceCache();
+    }
+
+    // Todo tools (pi-todo, built-in) keep the list in the tool RESULT
+    // details, not the input. The `tool_call` handler above only sees the
+    // action ({ action, text, id }), so read the authoritative list here.
+    if (TODO_TOOL_PATTERN.test(toolName)) {
+      const parsed = parseTodos((event as any).details);
+      if (parsed !== null) {
+        todos = parsed;
+        requestRender?.();
+      }
     }
 
     if (subagentsMap.has(toolCallId)) {

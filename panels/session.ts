@@ -26,13 +26,13 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
 
   const title = ctx.sessionTitle;
   if (!title) {
-    lines.push(dim("  (waiting for first message…)"));
+    lines.push(dim(" (waiting for first message…)"));
   } else {
     const truncated = trunc(title, Math.max(0, width - 2));
-    lines.push(dim(`  ${truncated}`));
+    lines.push(dim(` ${truncated}`));
   }
   if (ctx.sessionId) {
-    lines.push(dim(`  ${ctx.sessionId}`));
+    lines.push(dim(` ${ctx.sessionId}`));
   }
 
   lines.push("");
@@ -41,7 +41,7 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
   if (ctx.activeTool) {
     const toolElapsed = Date.now() - ctx.activeTool.startedAt;
     const toolName = trunc(ctx.activeTool.name, Math.max(0, width - 14));
-    lines.push(dim("  tool  ") + fg(COLORS.accent, toolName) + dim(` (${formatDuration(toolElapsed)})`));
+    lines.push(dim(" tool  ") + fg(COLORS.accent, toolName) + dim(` (${formatDuration(toolElapsed)})`));
     lines.push("");
   }
 
@@ -53,7 +53,7 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
     ? trunc(ctx.model, Math.max(0, width - 10 - thinkLabel.length))
     : NA;
   lines.push(
-    dim("  model ") +
+    dim(" model ") +
     fg(ctx.model ? COLORS.accent : COLORS.muted, modelDisplay) +
     (thinkLabel ? dim(thinkLabel) : "")
   );
@@ -73,7 +73,7 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
     const sev = Math.max(estSeverity, pctSeverity);
     const ctxColor = sev === 2 ? COLORS.warning : sev === 1 ? COLORS.accent : COLORS.success;
 
-    const prefix = "  ctx   ";
+    const prefix = " ctx   ";
     const pctLabel = `${Math.round(pct)}%`;
     const gap = 1;
     const rightPad = 2; // keep 2 cols clear on the right edge
@@ -94,7 +94,7 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
       : ctx.autoCompactEnabled ? " · auto-compact on" : " · auto-compact off";
     lines.push(dim(`${" ".repeat(prefix.length)}${tokens} / ${win} tokens${compact}`));
   } else {
-    lines.push(dim("  ctx   ") + fg(COLORS.muted, NA));
+    lines.push(dim(" ctx   ") + fg(COLORS.muted, NA));
   }
 
   lines.push("");
@@ -139,8 +139,8 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
   // Column sub-headers with separator
   const h1 = "Stats".padEnd(c1W);
   const h2 = "Tokens";
-  lines.push(dim("  " + h1 + h2));
-  lines.push(dim("  " + "─".repeat(Math.max(0, usable - 1))));
+  lines.push(dim(" " + h1 + h2));
+  lines.push(dim(" " + "─".repeat(Math.max(0, usable - 1))));
 
   const rowCount = Math.max(col1.length, col2.length);
   for (let i = 0; i < rowCount; i++) {
@@ -149,7 +149,7 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
     const v1s = v1.slice(0, v1W).padEnd(v1W);
     const v2s = v2.slice(0, v2W);
     lines.push(
-      dim("  " + l1.padEnd(5) + " ") + fg(c1, v1s) +
+      dim(" " + l1.padEnd(5) + " ") + fg(c1, v1s) +
       dim(l2.padEnd(5) + " ") + fg(COLORS.muted, v2s)
     );
   }

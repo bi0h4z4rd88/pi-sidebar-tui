@@ -14,26 +14,29 @@ const GLYPH_COLORS: Record<TodoStatus, string> = {
   pending: COLORS.muted,
 };
 
+const LEFT_PAD = 1; // gap between the sidebar's side border and the content
+
 function renderTodoLine(todo: TodoItem, width: number): string {
+  const leftPad = " ".repeat(LEFT_PAD);
   const glyph = fg(GLYPH_COLORS[todo.status], GLYPHS[todo.status]);
   const glyphWidth = 1; // all glyphs are 1 visible char
   const spaceAfterGlyph = 1;
-  const indent = glyphWidth + spaceAfterGlyph;
+  const indent = LEFT_PAD + glyphWidth + spaceAfterGlyph;
 
   if (todo.status === "in_progress" && todo.subAction) {
     const subText = ` (${todo.subAction})`;
     const contentMax = Math.max(0, width - indent);
     const fullText = todo.content + subText;
     if (visibleWidth(fullText) <= contentMax) {
-      return `${glyph} ${todo.content}${dim(subText)}`;
+      return `${leftPad}${glyph} ${todo.content}${dim(subText)}`;
     }
     const contentTruncated = trunc(todo.content, Math.max(0, contentMax - 4));
-    return `${glyph} ${contentTruncated}`;
+    return `${leftPad}${glyph} ${contentTruncated}`;
   }
 
   const contentMax = Math.max(0, width - indent);
   const content = trunc(todo.content, contentMax);
-  return `${glyph} ${content}`;
+  return `${leftPad}${glyph} ${content}`;
 }
 
 export function renderTodosPanel(ctx: SidebarContext, width: number): string[] {
@@ -43,7 +46,7 @@ export function renderTodosPanel(ctx: SidebarContext, width: number): string[] {
   const lines: string[] = [...panelHeader(title, width)];
 
   if (todos.length === 0) {
-    lines.push(dim("  (no todos)"));
+    lines.push(dim(" (no todos)"));
     return lines;
   }
 

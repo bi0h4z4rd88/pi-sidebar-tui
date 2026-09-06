@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.0] - 2026-09-06
+
+### Added
+
+- **MCP servers panel**: New "MCP Servers" panel listing each configured server's status (connected / partial / disabled), direct vs. total tool counts, and an estimate of the token cost of exposing direct tools. Reads `~/.pi/agent/mcp.json` + `mcp-cache.json` (1.5s cache, invalidated on MCP status events); disabled servers are surfaced with no tool counts.
+- **Todos live capture + resume**: The Todos panel now reads the list from the `todo` tool's result `details` (so pi-todo / built-in todos actually appear) and reconstructs it from session history on `session_start` — the panel is correct immediately after quitting and resuming, and stays branch-aware.
+
+### Changed
+
+- **1-space side-border indentation**: All panel content (session rows, MCP servers, todos, subagents, workspace files, and empty-state labels) is indented 1 space from the `│` left border for a consistent, less-crowded look.
+
 ## [1.6.2] - 2026-09-04
 
 ### Added

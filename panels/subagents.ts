@@ -23,29 +23,29 @@ function renderSubagentBlock(agent: SubagentEntry, width: number): string[] {
     agentNameColor = COLORS.accent;
   }
 
-  const nameMax = Math.max(0, width - 2);
+  const nameMax = Math.max(0, width - 3);
   const truncName = trunc(agent.name, nameMax);
-  lines.push(`${statusGlyph} ${fg(agentNameColor, truncName)}`);
+  lines.push(` ${statusGlyph} ${fg(agentNameColor, truncName)}`);
 
   if (agent.status === "completed" && agent.completedAt !== undefined) {
     const duration = agent.completedAt - agent.startedAt;
     const ago = now - agent.completedAt;
-    lines.push(dim(`  complete (${formatRelativeTime(ago)})`));
+    lines.push(dim(` complete (${formatRelativeTime(ago)})`));
     const meta = `${agent.turns} turns · ${agent.toolCount} tools · ${formatTokens(agent.tokens)} tokens · ${formatDuration(duration)}`;
-    lines.push(dim(`  ${trunc(meta, Math.max(0, width - 2))}`));
+    lines.push(dim(` ${trunc(meta, Math.max(0, width - 1))}`));
   } else if (agent.status === "failed") {
-    lines.push(dim(`  failed (${formatRelativeTime(elapsed)})`));
+    lines.push(dim(` failed (${formatRelativeTime(elapsed)})`));
     const meta = `${agent.turns} turns · ${agent.toolCount} tools · ${formatTokens(agent.tokens)} tokens`;
-    lines.push(dim(`  ${trunc(meta, Math.max(0, width - 2))}`));
+    lines.push(dim(` ${trunc(meta, Math.max(0, width - 1))}`));
   } else {
-    lines.push(dim(`  running (${formatDuration(elapsed)})`));
+    lines.push(dim(` running (${formatDuration(elapsed)})`));
     const meta = `${agent.turns} turns · ${agent.toolCount} tools · ${formatTokens(agent.tokens)} tokens`;
-    lines.push(dim(`  ${trunc(meta, Math.max(0, width - 2))}`));
+    lines.push(dim(` ${trunc(meta, Math.max(0, width - 1))}`));
   }
 
   const recentLog = agent.toolLog.slice(-3);
   for (const entry of recentLog) {
-    lines.push(dim(`  ${trunc(entry, Math.max(0, width - 2))}`));
+    lines.push(dim(` ${trunc(entry, Math.max(0, width - 1))}`));
   }
 
   return lines;
@@ -61,7 +61,7 @@ export function renderSubagentsPanel(ctx: SidebarContext, width: number): string
   const lines: string[] = [...panelHeader(title, width)];
 
   if (subagents.length === 0) {
-    lines.push(dim("  (no subagents)"));
+    lines.push(dim(" (no subagents)"));
     return lines;
   }
 

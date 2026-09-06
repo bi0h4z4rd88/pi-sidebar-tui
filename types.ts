@@ -33,6 +33,7 @@ export interface McpServerInfo {
   totalCount: number;
   tokenEstimate: number;
   connected: boolean;
+  disabled: boolean;
 }
 
 export interface CtxSample {

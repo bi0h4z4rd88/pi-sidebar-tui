@@ -37,27 +37,31 @@ function renderWorkspaceHeader(ctx: SidebarContext, width: number): string[] {
   return [headerLine, dim("─".repeat(Math.max(0, width)))];
 }
 
+const LEFT_PAD = 1; // gap between the sidebar's side border and the content
+
 function renderFileLine(file: WorkspaceFile, width: number): string {
+  const leftPad = " ".repeat(LEFT_PAD);
   const stat = formatDiffStat(file.added, file.removed);
   const statLen = visibleWidth(stat);
-  const pathMax = Math.max(0, width - statLen - 1);
+  const usable = Math.max(0, width - LEFT_PAD);
+  const pathMax = Math.max(0, usable - statLen - 1);
   const path = trunc(file.path, pathMax);
   const pathLen = visibleWidth(path);
-  const padding = Math.max(1, width - pathLen - statLen);
-  return `${path}${" ".repeat(padding)}${fg(COLORS.success, stat)}`;
+  const padding = Math.max(1, usable - pathLen - statLen);
+  return `${leftPad}${path}${" ".repeat(padding)}${fg(COLORS.success, stat)}`;
 }
 
 export function renderWorkspacePanel(ctx: SidebarContext, width: number): string[] {
   const lines: string[] = [...renderWorkspaceHeader(ctx, width)];
 
   if (!ctx.branch) {
-    lines.push(dim("  (not a git repo)"));
+    lines.push(dim(" (not a git repo)"));
     return lines;
   }
 
   const files = ctx.workspaceFiles.slice(0, 15);
   if (files.length === 0) {
-    lines.push(dim("  (clean)"));
+    lines.push(dim(" (clean)"));
     return lines;
   }
 

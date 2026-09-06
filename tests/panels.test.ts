@@ -355,6 +355,12 @@ test("todos panel: no line exceeds width", () => {
   }
 });
 
+test("todos panel: todo lines indented 1 space from side border", () => {
+  const ctx = makeCtx({ todos: [{ id: "1", content: "Task A", status: "pending" }] });
+  const s = strip(renderTodosPanel(ctx, 40).find((l) => strip(l).includes("Task A"))!);
+  assert.ok(s.startsWith(" ") && !s.startsWith("  "), `todo line indent != 1: "${s}"`);
+});
+
 // ─── Subagents panel ──────────────────────────────────────────────────────────
 
 function makeAgent(overrides: Partial<SubagentEntry> = {}): SubagentEntry {
@@ -539,4 +545,10 @@ test("workspace panel: no line exceeds width", () => {
   for (const line of lines) {
     assert.ok(visibleWidth(strip(line)) <= 30, `line too wide: "${strip(line)}"`);
   }
+});
+
+test("workspace panel: file lines indented 1 space from side border", () => {
+  const ctx = makeCtx({ branch: "main", workspaceFiles: [{ path: "src/foo.ts", added: 5, removed: 0 }] });
+  const s = strip(renderWorkspacePanel(ctx, 40).find((l) => strip(l).includes("src/foo.ts"))!);
+  assert.ok(s.startsWith(" ") && !s.startsWith("  "), `file line indent != 1: "${s}"`);
 });
