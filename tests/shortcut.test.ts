@@ -22,7 +22,7 @@ function makeCtx(notify: (msg: string, level?: string) => void) {
   return { cwd: process.cwd(), ui: { notify } } as any;
 }
 
-test("ctrl+shift+s shortcut is registered and toggles persistence", async () => {
+test("ctrl+shift+t shortcut is registered and toggles persistence", async () => {
   const configPath = join(mkdtempSync(join(tmpdir(), "sidebar-shortcut-")), "sidebar-tui.json");
   process.env.PI_SIDEBAR_CONFIG = configPath;
 
@@ -30,8 +30,8 @@ test("ctrl+shift+s shortcut is registered and toggles persistence", async () => 
   const { shortcuts, pi } = fakePi();
   piSidebar(pi);
 
-  const sc = shortcuts.get("ctrl+shift+s");
-  assert.ok(sc, 'shortcut "ctrl+shift+s" should be registered');
+  const sc = shortcuts.get("ctrl+shift+t");
+  assert.ok(sc, 'shortcut "ctrl+shift+t" should be registered');
   assert.ok(sc!.description, "shortcut should have a description");
 
   // Start from known state: enabled (default)
@@ -64,7 +64,7 @@ test("command handler and shortcut share the same enabled state", async () => {
   assert.equal(messages.at(-1), "Sidebar disabled");
 
   // Shortcut should now toggle FROM disabled -> enabled (shared state)
-  await shortcuts.get("ctrl+shift+s")!.handler(ctx);
+  await shortcuts.get("ctrl+shift+t")!.handler(ctx);
   assert.equal(messages.at(-1), "Sidebar enabled");
   assert.deepEqual(JSON.parse(readFileSync(configPath, "utf8")), { enabled: true, width: 40 });
 });

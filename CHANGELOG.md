@@ -11,6 +11,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- **Shortcut changed**: Toggle sidebar shortcut moved from `Ctrl+Shift+S` to `Ctrl+Shift+T` to avoid conflict with the pi-web-access extension which also uses `Ctrl+Shift+S`.
 - **1-space side-border indentation**: All panel content (session rows, MCP servers, todos, subagents, workspace files, and empty-state labels) is indented 1 space from the `│` left border for a consistent, less-crowded look.
 
 ## [1.6.2] - 2026-09-04
