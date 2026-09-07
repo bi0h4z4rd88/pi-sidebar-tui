@@ -19,7 +19,7 @@ export interface SidebarSettings {
   width: number;
 }
 
-export const DEFAULT_SIDEBAR_SETTINGS: SidebarSettings = { enabled: true, width: 40 };
+export const DEFAULT_SIDEBAR_SETTINGS: SidebarSettings = { enabled: true, width: 45 };
 export const MIN_SIDEBAR_WIDTH = 10;
 export const MAX_SIDEBAR_WIDTH = 120;
 
