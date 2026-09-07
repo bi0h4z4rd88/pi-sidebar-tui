@@ -7,20 +7,6 @@ export interface TodoItem {
   subAction?: string;
 }
 
-export type SubagentStatus = "running" | "completed" | "failed";
-
-export interface SubagentEntry {
-  id: string;
-  name: string;
-  status: SubagentStatus;
-  startedAt: number;
-  completedAt?: number;
-  turns: number;
-  toolCount: number;
-  tokens: number;
-  toolLog: string[];
-}
-
 export interface WorkspaceFile {
   path: string;
   added: number;
@@ -50,7 +36,6 @@ export interface SidebarContext {
   sessionTitle: string | null;
   sessionId: string | null;
   todos: TodoItem[];
-  subagents: SubagentEntry[];
   branch: string | null;
   aheadCount: number;
   untrackedCount: number;

@@ -37,7 +37,6 @@ function makeMcpCtx(servers: McpServerInfo[]): SidebarContext {
     sessionTitle: null,
     sessionId: null,
     todos: [],
-    subagents: [],
     branch: "main",
     aheadCount: 0,
     untrackedCount: 0,

@@ -1,6 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { loadSidebarSettings, saveSidebarSettings } from "./config.ts";
-import type { TodoItem, SubagentEntry, SidebarContext, CtxSample } from "./types.ts";
+import type { TodoItem, SidebarContext, CtxSample } from "./types.ts";
 import { parseTodos, reconstructTodosFromBranch } from "./parse-todos.ts";
 import { renderSidebar } from "./sidebar.ts";
 import { getWorkspaceData, invalidateWorkspaceCache } from "./workspace.ts";
@@ -8,8 +8,6 @@ import { SidebarCompositor } from "./compositor.ts";
 import { getMcpServers, invalidateMcpCache } from "./mcp.ts";
 import { setPiTheme } from "./colors.ts";
 
-const TOOL_LOG_MAX = 10;
-const SUBAGENT_TOOL_PATTERN = /^(task|dispatch|agent)/i;
 const TODO_TOOL_PATTERN = /todo/i;
 const WRITE_TOOLS = new Set(["write", "edit", "bash", "computer"]);
 
@@ -19,8 +17,6 @@ let sidebarWidth = initialSettings.width;
 let sessionManager: any = null;
 let sessionTitle: string | null = null;
 let todos: TodoItem[] = [];
-const subagentsMap = new Map<string, SubagentEntry>();
-let activeSubagentId: string | null = null;
 let currentModel: string | null = null;
 let thinkingLevel: string | null = null;
 let contextTokens: number | null = null;
@@ -124,7 +120,6 @@ function buildSidebarContext(cwd: string | undefined): SidebarContext {
     sessionTitle,
     sessionId: sessionManager?.getSessionId?.() ?? null,
     todos,
-    subagents: Array.from(subagentsMap.values()),
     branch: ws.branch,
     aheadCount: ws.aheadCount,
     untrackedCount: ws.untrackedCount,
@@ -181,14 +176,6 @@ function updateContextUsage(ctx: any): void {
   }
 }
 
-function extractSubagentName(input: unknown): string {
-  if (!input || typeof input !== "object") return "subagent";
-  const obj = input as Record<string, unknown>;
-  const name = obj["name"] ?? obj["title"] ?? obj["description"] ?? obj["task"];
-  if (typeof name !== "string") return "subagent";
-  return name.split("\n")[0].slice(0, 60);
-}
-
 export default function piSidebar(pi: ExtensionAPI) {
   let currentCwd: string | undefined = process.cwd();
   let requestRender: (() => void) | null = null;
@@ -221,8 +208,6 @@ export default function piSidebar(pi: ExtensionAPI) {
     // Seed todos from session history so the panel is correct on resume/branch
     // (pi-todo stores a full snapshot in each `todo` tool result's details).
     todos = reconstructTodosFromBranch(sessionManager?.getBranch?.() ?? []);
-    subagentsMap.clear();
-    activeSubagentId = null;
     currentModel = null;
     thinkingLevel = null;
     contextTokens = null;
@@ -344,8 +329,6 @@ export default function piSidebar(pi: ExtensionAPI) {
     tpsSamples = [];
     sessionTitle = null;
     todos = [];
-    subagentsMap.clear();
-    activeSubagentId = null;
   });
 
   pi.on("before_agent_start", async (event, ctx) => {
@@ -366,7 +349,6 @@ export default function piSidebar(pi: ExtensionAPI) {
     currentCwd = (ctx as any).cwd;
     const toolName = (event as any).toolName ?? "";
     const input = (event as any).input;
-    const toolCallId = (event as any).toolCallId ?? toolName;
 
     if (TODO_TOOL_PATTERN.test(toolName)) {
       const parsed = parseTodos(input);
@@ -374,41 +356,11 @@ export default function piSidebar(pi: ExtensionAPI) {
         todos = parsed;
         requestRender?.();
       }
-    } else if (SUBAGENT_TOOL_PATTERN.test(toolName)) {
-      const entry: SubagentEntry = {
-        id: toolCallId,
-        name: extractSubagentName(input),
-        status: "running",
-        startedAt: Date.now(),
-        turns: 0,
-        toolCount: 0,
-        tokens: 0,
-        toolLog: [],
-      };
-      subagentsMap.set(toolCallId, entry);
-      activeSubagentId = toolCallId;
-      requestRender?.();
-    } else if (activeSubagentId) {
-      const active = subagentsMap.get(activeSubagentId);
-      if (active) {
-        const inputPreview = typeof input === "string"
-          ? input.slice(0, 40)
-          : typeof input === "object" && input !== null
-            ? JSON.stringify(input).slice(0, 40)
-            : "";
-        active.toolLog.push(`${toolName}: ${inputPreview}`);
-        if (active.toolLog.length > TOOL_LOG_MAX) {
-          active.toolLog.shift();
-        }
-        active.toolCount++;
-        requestRender?.();
-      }
     }
   });
 
   pi.on("tool_result", async (event) => {
     const toolName = (event as any).toolName ?? "";
-    const toolCallId = (event as any).toolCallId ?? toolName;
 
     if (WRITE_TOOLS.has(toolName.toLowerCase())) {
       invalidateWorkspaceCache();
@@ -425,15 +377,6 @@ export default function piSidebar(pi: ExtensionAPI) {
       }
     }
 
-    if (subagentsMap.has(toolCallId)) {
-      const entry = subagentsMap.get(toolCallId)!;
-      entry.status = (event as any).isError ? "failed" : "completed";
-      entry.completedAt = Date.now();
-      if (activeSubagentId === toolCallId) {
-        activeSubagentId = null;
-      }
-      requestRender?.();
-    }
   });
 
   pi.on("message_start", async (event) => {
@@ -490,15 +433,6 @@ export default function piSidebar(pi: ExtensionAPI) {
         }
         liveTps = null;
         msgStartMs = null;
-      }
-    }
-    if (activeSubagentId) {
-      const active = subagentsMap.get(activeSubagentId);
-      if (active) {
-        active.turns++;
-        if (usage && typeof usage.output === "number") {
-          active.tokens += (usage.input ?? 0) + (usage.output ?? 0);
-        }
       }
     }
     requestRender?.();

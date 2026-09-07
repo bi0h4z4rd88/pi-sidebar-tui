@@ -2,7 +2,7 @@
 
 OpenCode-style sidebar TUI extension for [pi coding agent](https://github.com/earendil-works/pi).
 
-Displays a real-time sidebar panel inside the pi terminal UI showing session metrics, todo tracking, subagent monitoring, workspace status, and connected MCP servers — inspired by [OpenCode](https://github.com/atanunny/opencode) sidebar.
+Displays a real-time sidebar panel inside the pi terminal UI showing session metrics, todo tracking, workspace status, and connected MCP servers — inspired by [OpenCode](https://github.com/atanunny/opencode) sidebar.
 
 ## Features
 
@@ -30,13 +30,6 @@ Displays a real-time sidebar panel inside the pi terminal UI showing session met
 - Status glyphs: `○` pending, `●` in progress, `✓` completed
 - Progress counter: `Todos (2/5)`
 - Sub-action annotations for in-progress items
-
-### Async Subagents Panel
-- Tracks dispatched subagents (task/dispatch/agent tools)
-- Status: running (animated spinner), completed, or failed
-- Per-agent: turns, tool count, token usage, elapsed time
-- Last 3 tool calls logged per agent
-- Parallel subagent indicator
 
 ### Workspace Panel
 - Git branch with ahead/untracked counts
@@ -95,7 +88,6 @@ pi-sidebar-tui/
 ├── panels/
 │   ├── session.ts        # Session metrics panel
 │   ├── todos.ts          # Todo tracking panel
-│   ├── subagents.ts      # Async subagent monitoring panel
 │   ├── workspace.ts      # Git workspace status panel
 │   └── mcp.ts            # MCP server status panel
 ├── tests/

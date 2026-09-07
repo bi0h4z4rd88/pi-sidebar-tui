@@ -12,7 +12,12 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - **Shortcut changed**: Toggle sidebar shortcut moved from `Ctrl+Shift+S` to `Ctrl+Shift+T` to avoid conflict with the pi-web-access extension which also uses `Ctrl+Shift+S`.
+- **Decoupled config from pi runtime import**: `config.ts` no longer imports `getAgentDir()` from `@earendil-works/pi-coding-agent`; the agent-dir resolution (`$PI_CODING_AGENT_DIR` or `~/.pi/agent`) is inlined so tests never load the full pi-coding-agent module graph.
 - **1-space side-border indentation**: All panel content (session rows, MCP servers, todos, subagents, workspace files, and empty-state labels) is indented 1 space from the `│` left border for a consistent, less-crowded look.
+
+### Removed
+
+- **Async Subagents panel**: Dropped subagent tracking (task/dispatch/agent tool monitoring) from the sidebar — `panels/subagents.ts`, related types, event handling, and tests removed.
 
 ## [1.6.2] - 2026-09-04
 

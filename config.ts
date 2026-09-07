@@ -1,6 +1,18 @@
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import { getAgentDir } from "@earendil-works/pi-coding-agent";
+
+// Mirrors pi-coding-agent's getAgentDir() ($PI_CODING_AGENT_DIR or ~/.pi/agent).
+// Inlined instead of importing the package so tests never load the full
+// pi-coding-agent module graph (it pulls in @earendil-works/pi-server, which
+// is only present inside a real pi runtime).
+function agentDir(): string {
+  const envDir = process.env["PI_CODING_AGENT_DIR"];
+  if (envDir) {
+    return envDir.startsWith("~/") ? join(homedir(), envDir.slice(2)) : envDir;
+  }
+  return join(homedir(), ".pi", "agent");
+}
 
 export interface SidebarSettings {
   enabled: boolean;
@@ -12,7 +24,7 @@ export const MIN_SIDEBAR_WIDTH = 10;
 export const MAX_SIDEBAR_WIDTH = 120;
 
 export function sidebarConfigPath(): string {
-  return process.env["PI_SIDEBAR_CONFIG"] || join(getAgentDir(), "sidebar-tui.json");
+  return process.env["PI_SIDEBAR_CONFIG"] || join(agentDir(), "sidebar-tui.json");
 }
 
 export function loadSidebarSettings(path: string = sidebarConfigPath()): SidebarSettings {
