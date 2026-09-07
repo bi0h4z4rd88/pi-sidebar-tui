@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.1] - 2026-09-07
+
+### Added
+
+- **Caveman mode indicator**: The Session panel now shows the active `pi-caveman` level (`off`/`lite`/`full`/`ultra`/`wenyan*`/`micro`) with an animated campfire glyph that cycles while the agent runs and freezes when idle. State is read from the plugin's shared sources (the session `caveman-level` entry, falling back to `~/.pi/agent/caveman.json`); the line is hidden when the plugin is uninstalled or the level is off. No dependency on the `pi-caveman` package.
+
+### Changed
+
+- **Thinking level color**: The thinking level on the model line now uses pi's own per-level theme color (`thinkingOff`/`thinkingMinimal`/`thinkingLow`/`thinkingMedium`/`thinkingHigh`/`thinkingXhigh`/`thinkingMax`) instead of muted dim, matching what pi renders.
+- **Session row alignment**: The model / caveman / ctx / tool labels share a fixed-width column so their values align at the same position.
+- **Active tool placement**: The live "tool" line now renders right after the context / tokens line instead of above the model.
+- **Context detail unit**: The tokens line uses `tkns` (was `tokens`) to save width.
+
 ## [1.7.0] - 2026-09-06
 
 ### Added
