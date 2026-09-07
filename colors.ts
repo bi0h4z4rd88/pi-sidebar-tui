@@ -29,6 +29,15 @@ const FALLBACK_HEX: Record<string, string> = {
   warning: "#ff9500",
   text:    "#00afaf",
   muted:   "#6c6c6c",
+  // Thinking-level tokens — default values from pi's dark theme (used only
+  // before a live pi theme is injected, e.g. tests / cold start).
+  thinkingOff:     "#555555",
+  thinkingMinimal: "#6e6e6e",
+  thinkingLow:     "#5f87af",
+  thinkingMedium:  "#81a2be",
+  thinkingHigh:    "#b294bb",
+  thinkingXhigh:   "#d183e8",
+  thinkingMax:     "#ff5fff",
 };
 
 let _piTheme: any = null;
@@ -51,6 +60,15 @@ export function fg(colorName: string, text: string): string {
   if (_piTheme) return _piTheme.fg(colorName, text);
   const hex = FALLBACK_HEX[colorName] ?? "#ffffff";
   return `${hexToAnsi(hex)}${text}${RESET}`;
+}
+
+/**
+ * Map a thinking level to pi's theme color token, mirroring pi's
+ * `getThinkingBorderColor`. e.g. "high" -> "thinkingHigh", "xhigh" ->
+ * "thinkingXhigh". Pass the result to `fg()` to reuse pi's own color.
+ */
+export function thinkingColorName(level: string): string {
+  return "thinking" + level.charAt(0).toUpperCase() + level.slice(1);
 }
 
 export function formatDuration(ms: number): string {

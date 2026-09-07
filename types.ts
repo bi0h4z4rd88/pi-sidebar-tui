@@ -57,6 +57,8 @@ export interface SidebarContext {
   sessionStartMs: number;
   mcpServers: McpServerInfo[];
   modelProvider: string | null;
+  cavemanLevel: string | null;
+  cavemanFrame: number;
   liveTps: number | null;
   lastTps: number | null;
   lastTurnMs: number | null;

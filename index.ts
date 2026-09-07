@@ -6,6 +6,7 @@ import { renderSidebar } from "./sidebar.ts";
 import { getWorkspaceData, invalidateWorkspaceCache } from "./workspace.ts";
 import { SidebarCompositor } from "./compositor.ts";
 import { getMcpServers, invalidateMcpCache } from "./mcp.ts";
+import { loadCavemanConfig, resolveCavemanLevel, cavemanInterval, type CavemanConfig } from "./caveman.ts";
 import { setPiTheme } from "./colors.ts";
 
 const TODO_TOOL_PATTERN = /todo/i;
@@ -43,6 +44,10 @@ const CTX_SAMPLE_MAX = 10;
 const TPS_WINDOW_MS = 2000;
 let sessionTimerHandle: ReturnType<typeof setInterval> | null = null;
 let unsubscribeMcpStatus: (() => void) | null = null;
+let cavemanLevel: string | null = null;
+let cavemanFrame = 0;
+let cavemanTimer: ReturnType<typeof setInterval> | null = null;
+let cavemanCfg: CavemanConfig = { defaultLevel: "full", showStatus: true, present: false };
 
 function inferThinkingLevel(sm: any): string | null {
   try {
@@ -114,6 +119,11 @@ function inferSessionTitle(sm: any): string | null {
   return null;
 }
 
+function refreshCavemanLevel(): void {
+  const branch = sessionManager?.getBranch?.() ?? [];
+  cavemanLevel = resolveCavemanLevel(branch, cavemanCfg);
+}
+
 function buildSidebarContext(cwd: string | undefined): SidebarContext {
   const ws = getWorkspaceData(cwd);
   return {
@@ -141,6 +151,8 @@ function buildSidebarContext(cwd: string | undefined): SidebarContext {
     sessionStartMs,
     mcpServers: getMcpServers(),
     modelProvider,
+    cavemanLevel,
+    cavemanFrame,
     liveTps,
     lastTps,
     lastTurnMs,
@@ -182,6 +194,20 @@ export default function piSidebar(pi: ExtensionAPI) {
   let tuiRef: any = null;
   let compositorRef: SidebarCompositor | null = null;
 
+  const stopCavemanAnim = () => {
+    if (cavemanTimer) { clearInterval(cavemanTimer); cavemanTimer = null; }
+    cavemanFrame = 0;
+  };
+  const startCavemanAnim = () => {
+    stopCavemanAnim();
+    if (cavemanLevel && cavemanLevel !== "off") {
+      cavemanTimer = setInterval(() => {
+        cavemanFrame++;
+        requestRender?.();
+      }, cavemanInterval(cavemanLevel));
+    }
+  };
+
   const setSidebarEnabled = (enabled: boolean, ctx: any) => {
     sidebarEnabled = enabled;
     saveSidebarSettings({ enabled: sidebarEnabled, width: sidebarWidth });
@@ -215,6 +241,9 @@ export default function piSidebar(pi: ExtensionAPI) {
     contextWindow = null;
     ctxSamples = [];
     sessionStartMs = Date.now();
+    cavemanCfg = loadCavemanConfig();
+    refreshCavemanLevel();
+    stopCavemanAnim();
     if (sessionTimerHandle) { clearInterval(sessionTimerHandle); sessionTimerHandle = null; }
     sessionTimerHandle = setInterval(() => requestRender?.(), 30_000);
     activeTool = null;
@@ -313,6 +342,8 @@ export default function piSidebar(pi: ExtensionAPI) {
   pi.on("session_shutdown", async () => {
     if (sessionTimerHandle) { clearInterval(sessionTimerHandle); sessionTimerHandle = null; }
     if (unsubscribeMcpStatus) { unsubscribeMcpStatus(); unsubscribeMcpStatus = null; }
+    stopCavemanAnim();
+    cavemanLevel = null;
     tokensIn = 0;
     tokensOut = 0;
     cacheRead = 0;
@@ -442,6 +473,7 @@ export default function piSidebar(pi: ExtensionAPI) {
     currentCwd = (ctx as any).cwd;
     updateContextUsage(ctx);
     invalidateWorkspaceCache();
+    refreshCavemanLevel();
     turnCount++;
     activeTool = null;
     if (agentStartMs !== null) {
@@ -455,6 +487,7 @@ export default function piSidebar(pi: ExtensionAPI) {
     currentCwd = (ctx as any).cwd;
     updateContextUsage(ctx);
     invalidateWorkspaceCache();
+    stopCavemanAnim();
     requestRender?.();
   });
 
@@ -476,6 +509,8 @@ export default function piSidebar(pi: ExtensionAPI) {
     agentStartMs = Date.now();
     msgStartMs = null;
     updateContextUsage(ctx);
+    refreshCavemanLevel();
+    startCavemanAnim();
     requestRender?.();
   });
 

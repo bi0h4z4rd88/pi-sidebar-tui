@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { visibleWidth } from "@earendil-works/pi-tui";
 import type { SidebarContext, TodoItem, WorkspaceFile } from "../types.ts";
 import { renderSessionPanel, estimateCtxLeft } from "../panels/session.ts";
+import { thinkingColorName } from "../colors.ts";
 import { renderTodosPanel } from "../panels/todos.ts";
 import { renderWorkspacePanel } from "../panels/workspace.ts";
 
@@ -92,7 +93,7 @@ test("session panel: context detail line shows token counts + unit", () => {
   const ctx = makeCtx({ contextPercent: 40, contextTokens: 80000, contextWindow: 200000 });
   const text = renderSessionPanel(ctx, 40).map(strip).join("\n");
   assert.ok(text.includes("80k / 200k"), `missing token counts, got: ${text}`);
-  assert.ok(text.includes("tokens"), `missing 'tokens' unit, got: ${text}`);
+  assert.ok(text.includes("tkns"), `missing 'tkns' unit, got: ${text}`);
 });
 
 test("session panel: context detail line includes auto-compact status", () => {
@@ -119,6 +120,26 @@ test("session panel: context bar leaves 2 cols clear on the right", () => {
 test("session panel: no bar when context data absent", () => {
   const text = renderSessionPanel(makeCtx({}), 40).map(strip).join("\n");
   assert.ok(!text.includes("█"), `bar should not render without context, got: ${text}`);
+});
+
+test("thinkingColorName maps level to pi theme token", () => {
+  assert.equal(thinkingColorName("off"), "thinkingOff");
+  assert.equal(thinkingColorName("minimal"), "thinkingMinimal");
+  assert.equal(thinkingColorName("low"), "thinkingLow");
+  assert.equal(thinkingColorName("medium"), "thinkingMedium");
+  assert.equal(thinkingColorName("high"), "thinkingHigh");
+  assert.equal(thinkingColorName("xhigh"), "thinkingXhigh");
+  assert.equal(thinkingColorName("max"), "thinkingMax");
+});
+
+test("session panel: model line shows thinking level word", () => {
+  const text = renderSessionPanel(makeCtx({ model: "claude", thinkingLevel: "high" }), 40).map(strip).join("\n");
+  assert.ok(text.includes("high"), `missing thinking level, got: ${text}`);
+});
+
+test("session panel: model line shows 'think off' when level off", () => {
+  const text = renderSessionPanel(makeCtx({ model: "claude", thinkingLevel: "off" }), 40).map(strip).join("\n");
+  assert.ok(text.includes("think off"), `missing think off, got: ${text}`);
 });
 
 // ─── Session panel: context estimate ──────────────────────────────────────────

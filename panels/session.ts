@@ -1,7 +1,13 @@
 import type { SidebarContext, CtxSample, CtxLeft } from "../types.ts";
-import { dim, fg, COLORS, panelHeader, trunc } from "../colors.ts";
+import { dim, fg, COLORS, panelHeader, trunc, thinkingColorName } from "../colors.ts";
+import { cavemanFireFrame, cavemanLabel } from "../caveman.ts";
 
 const NA = "—";
+
+// Left label column: leading space + label left-padded to 7 + trailing space.
+// 9 cols total so the longest label ("caveman") fits with a gap; every value
+// in the Session panel then aligns at the same column.
+const label = (name: string): string => " " + name.padEnd(7) + " ";
 
 export function estimateCtxLeft(
   samples: CtxSample[],
@@ -37,26 +43,34 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
 
   lines.push("");
 
-  // Active tool (live only)
-  if (ctx.activeTool) {
-    const toolElapsed = Date.now() - ctx.activeTool.startedAt;
-    const toolName = trunc(ctx.activeTool.name, Math.max(0, width - 14));
-    lines.push(dim(" tool  ") + fg(COLORS.accent, toolName) + dim(` (${formatDuration(toolElapsed)})`));
-    lines.push("");
-  }
-
   // Model
-  const thinkLabel = ctx.model
+  const thinkText = ctx.model
     ? (ctx.thinkingLevel && ctx.thinkingLevel !== "off" ? ` - ${ctx.thinkingLevel}` : " - think off")
     : "";
   const modelDisplay = ctx.model
-    ? trunc(ctx.model, Math.max(0, width - 10 - thinkLabel.length))
+    ? trunc(ctx.model, Math.max(0, width - 12 - thinkText.length))
     : NA;
+  // Color the thinking level with pi's own per-level theme color (delegates to
+  // the live pi theme via fg(); falls back to the dark-theme hex otherwise).
+  const thinkPart = ctx.model
+    ? (ctx.thinkingLevel && ctx.thinkingLevel !== "off"
+        ? dim(" - ") + fg(thinkingColorName(ctx.thinkingLevel), ctx.thinkingLevel)
+        : dim(" - think off"))
+    : "";
   lines.push(
-    dim(" model ") +
+    dim(label("model")) +
     fg(ctx.model ? COLORS.accent : COLORS.muted, modelDisplay) +
-    (thinkLabel ? dim(thinkLabel) : "")
+    thinkPart
   );
+
+  // Caveman mode (from the pi-caveman extension). Omitted when off/uninstalled.
+  if (ctx.cavemanLevel && ctx.cavemanLevel !== "off") {
+    lines.push(
+      dim(label("caveman")) +
+      cavemanFireFrame(ctx.cavemanFrame) +
+      fg(COLORS.accent, ` ${cavemanLabel(ctx.cavemanLevel)}`)
+    );
+  }
 
   const ctxEst = estimateCtxLeft(ctx.ctxSamples, ctx.contextTokens, ctx.contextWindow);
 
@@ -73,7 +87,7 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
     const sev = Math.max(estSeverity, pctSeverity);
     const ctxColor = sev === 2 ? COLORS.warning : sev === 1 ? COLORS.accent : COLORS.success;
 
-    const prefix = " ctx   ";
+    const prefix = label("ctx");
     const pctLabel = `${Math.round(pct)}%`;
     const gap = 1;
     const rightPad = 2; // keep 2 cols clear on the right edge
@@ -92,9 +106,16 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
 
     const compact = ctx.autoCompactEnabled === null ? ""
       : ctx.autoCompactEnabled ? " · auto-compact on" : " · auto-compact off";
-    lines.push(dim(`${" ".repeat(prefix.length)}${tokens} / ${win} tokens${compact}`));
+    lines.push(dim(`${" ".repeat(prefix.length)}${tokens} / ${win} tkns${compact}`));
   } else {
-    lines.push(dim(" ctx   ") + fg(COLORS.muted, NA));
+    lines.push(dim(label("ctx")) + fg(COLORS.muted, NA));
+  }
+
+  // Active tool (live only) — rendered right after the ctx / tokens line
+  if (ctx.activeTool) {
+    const toolElapsed = Date.now() - ctx.activeTool.startedAt;
+    const toolName = trunc(ctx.activeTool.name, Math.max(0, width - 16));
+    lines.push(dim(label("tool")) + fg(COLORS.accent, toolName) + dim(` (${formatDuration(toolElapsed)})`));
   }
 
   lines.push("");
