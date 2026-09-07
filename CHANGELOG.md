@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.2] - 2026-09-07
+
+### Changed
+
+- **Default sidebar width**: New-install default sidebar width changed from 40 to 45 columns. Existing users keep their configured width (`~/.pi/agent/sidebar-tui.json`).
+
 ## [1.7.1] - 2026-09-07
 
 ### Added
