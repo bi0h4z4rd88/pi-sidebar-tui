@@ -1,5 +1,5 @@
 import type { SidebarContext, CtxSample, CtxLeft } from "../types.ts";
-import { dim, fg, COLORS, panelHeader, trunc, thinkingColorName } from "../colors.ts";
+import { dim, fg, COLORS, panelHeader, trunc, thinkingColorName, spinnerFrameAt } from "../colors.ts";
 import { cavemanFireFrame, cavemanLabel } from "../caveman.ts";
 
 const NA = "—";
@@ -50,6 +50,12 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
   const modelDisplay = ctx.model
     ? trunc(ctx.model, Math.max(0, width - 12 - thinkText.length))
     : NA;
+  // Agent activity spinner sits in the model label's trailing slot (2 spaces
+  // after "model"), so the model name always starts at the same column.
+  const spinGlyph = ctx.agentActive
+    ? fg(COLORS.accent, spinnerFrameAt(ctx.spinnerFrame))
+    : dim("·");
+  const modelLabel = dim(" model ") + spinGlyph + " ";
   // Color the thinking level with pi's own per-level theme color (delegates to
   // the live pi theme via fg(); falls back to the dark-theme hex otherwise).
   const thinkPart = ctx.model
@@ -58,7 +64,7 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
         : dim(" - think off"))
     : "";
   lines.push(
-    dim(label("model")) +
+    modelLabel +
     fg(ctx.model ? COLORS.accent : COLORS.muted, modelDisplay) +
     thinkPart
   );

@@ -88,10 +88,15 @@ export function formatTokens(n: number): string {
   return `${(n / 1_000_000).toFixed(1)}M`;
 }
 
-const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+export const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
 export function spinnerFrame(): string {
   return SPINNER_FRAMES[Math.floor(Date.now() / 80) % SPINNER_FRAMES.length];
+}
+
+/** Frame at an explicit index (wraps). Use with a tick counter for animation. */
+export function spinnerFrameAt(i: number): string {
+  return SPINNER_FRAMES[((i % SPINNER_FRAMES.length) + SPINNER_FRAMES.length) % SPINNER_FRAMES.length] ?? SPINNER_FRAMES[0]!;
 }
 
 export function formatDiffStat(added: number, removed: number): string {

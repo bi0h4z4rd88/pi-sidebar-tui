@@ -59,6 +59,8 @@ export interface SidebarContext {
   modelProvider: string | null;
   cavemanLevel: string | null;
   cavemanFrame: number;
+  agentActive: boolean;
+  spinnerFrame: number;
   liveTps: number | null;
   lastTps: number | null;
   lastTurnMs: number | null;

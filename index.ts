@@ -48,6 +48,9 @@ let cavemanLevel: string | null = null;
 let cavemanFrame = 0;
 let cavemanTimer: ReturnType<typeof setInterval> | null = null;
 let cavemanCfg: CavemanConfig = { defaultLevel: "full", showStatus: true, present: false };
+let agentActive = false;
+let activityFrame = 0;
+let activityTimer: ReturnType<typeof setInterval> | null = null;
 
 function inferThinkingLevel(sm: any): string | null {
   try {
@@ -153,6 +156,8 @@ function buildSidebarContext(cwd: string | undefined): SidebarContext {
     modelProvider,
     cavemanLevel,
     cavemanFrame,
+    agentActive,
+    spinnerFrame: activityFrame,
     liveTps,
     lastTps,
     lastTurnMs,
@@ -206,6 +211,17 @@ export default function piSidebar(pi: ExtensionAPI) {
         requestRender?.();
       }, cavemanInterval(cavemanLevel));
     }
+  };
+  const stopActivityAnim = () => {
+    if (activityTimer) { clearInterval(activityTimer); activityTimer = null; }
+    activityFrame = 0;
+  };
+  const startActivityAnim = () => {
+    stopActivityAnim();
+    activityTimer = setInterval(() => {
+      activityFrame++;
+      requestRender?.();
+    }, 90);
   };
 
   const setSidebarEnabled = (enabled: boolean, ctx: any) => {
@@ -343,6 +359,8 @@ export default function piSidebar(pi: ExtensionAPI) {
     if (sessionTimerHandle) { clearInterval(sessionTimerHandle); sessionTimerHandle = null; }
     if (unsubscribeMcpStatus) { unsubscribeMcpStatus(); unsubscribeMcpStatus = null; }
     stopCavemanAnim();
+    stopActivityAnim();
+    agentActive = false;
     cavemanLevel = null;
     tokensIn = 0;
     tokensOut = 0;
@@ -488,6 +506,8 @@ export default function piSidebar(pi: ExtensionAPI) {
     updateContextUsage(ctx);
     invalidateWorkspaceCache();
     stopCavemanAnim();
+    agentActive = false;
+    stopActivityAnim();
     requestRender?.();
   });
 
@@ -511,6 +531,8 @@ export default function piSidebar(pi: ExtensionAPI) {
     updateContextUsage(ctx);
     refreshCavemanLevel();
     startCavemanAnim();
+    agentActive = true;
+    startActivityAnim();
     requestRender?.();
   });
 

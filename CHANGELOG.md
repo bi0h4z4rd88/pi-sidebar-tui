@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [1.7.2] - 2026-09-07
 
+### Added
+
+- **Agent activity spinner**: The Session panel model line now shows a small animated spinner just after the `model` label while the agent is working (and a static dot when idle) — a glanceable busy/idle indicator.
+
 ### Changed
 
 - **Default sidebar width**: New-install default sidebar width changed from 40 to 45 columns. Existing users keep their configured width (`~/.pi/agent/sidebar-tui.json`).

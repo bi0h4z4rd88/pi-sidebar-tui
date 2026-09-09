@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { visibleWidth } from "@earendil-works/pi-tui";
 import type { SidebarContext, TodoItem, WorkspaceFile } from "../types.ts";
 import { renderSessionPanel, estimateCtxLeft } from "../panels/session.ts";
-import { thinkingColorName } from "../colors.ts";
+import { thinkingColorName, spinnerFrameAt, SPINNER_FRAMES } from "../colors.ts";
 import { renderTodosPanel } from "../panels/todos.ts";
 import { renderWorkspacePanel } from "../panels/workspace.ts";
 
@@ -40,6 +40,8 @@ function makeCtx(overrides: Partial<SidebarContext> = {}): SidebarContext {
     liveTps: null,
     lastTps: null,
     lastTurnMs: null,
+    agentActive: false,
+    spinnerFrame: 0,
     ctxSamples: [],
     ...overrides,
   };
@@ -140,6 +142,26 @@ test("session panel: model line shows thinking level word", () => {
 test("session panel: model line shows 'think off' when level off", () => {
   const text = renderSessionPanel(makeCtx({ model: "claude", thinkingLevel: "off" }), 40).map(strip).join("\n");
   assert.ok(text.includes("think off"), `missing think off, got: ${text}`);
+});
+
+function modelLine(ctx: SidebarContext): string {
+  return renderSessionPanel(ctx, 40).map(strip).find(l => l.includes("model") && !l.includes("─"))!;
+}
+
+test("spinnerFrameAt wraps modulo frames", () => {
+  assert.equal(spinnerFrameAt(0), SPINNER_FRAMES[0]);
+  assert.equal(spinnerFrameAt(SPINNER_FRAMES.length), SPINNER_FRAMES[0]);
+  assert.notEqual(spinnerFrameAt(0), spinnerFrameAt(1));
+});
+
+test("session panel: model line shows spinner glyph when agent active", () => {
+  const line = modelLine(makeCtx({ model: "claude", agentActive: true, spinnerFrame: 3 }));
+  assert.ok(line.includes(SPINNER_FRAMES[3]!), `expected spinner ${SPINNER_FRAMES[3]}, got: ${line}`);
+});
+
+test("session panel: model line shows idle dot when agent not active", () => {
+  const line = modelLine(makeCtx({ model: "claude", agentActive: false, spinnerFrame: 0 }));
+  assert.ok(line.includes("·"), `expected idle dot, got: ${line}`);
 });
 
 // ─── Session panel: context estimate ──────────────────────────────────────────
