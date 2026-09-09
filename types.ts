@@ -36,6 +36,7 @@ export interface SidebarContext {
   sessionTitle: string | null;
   sessionId: string | null;
   todos: TodoItem[];
+  todosMax: number;
   branch: string | null;
   aheadCount: number;
   untrackedCount: number;

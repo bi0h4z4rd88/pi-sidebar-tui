@@ -5,10 +5,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DEFAULT_SIDEBAR_SETTINGS } from "../config.ts";
 
-// The sidebar module captures its width from the config at import time (the
-// default when no file exists), so the "known state" width must match that
-// default — assert against it rather than a hard-coded literal.
+// The sidebar module captures width/todosMax from the config at import time
+// (the defaults when no file exists) and persists them on every toggle, so the
+// expected saved settings must match those defaults.
 const W = DEFAULT_SIDEBAR_SETTINGS.width;
+const saved = (enabled: boolean) => ({ enabled, width: W, todosMax: DEFAULT_SIDEBAR_SETTINGS.todosMax });
 
 function fakePi() {
   const shortcuts = new Map<string, { description?: string; handler: (ctx: any) => void }>();
@@ -47,11 +48,11 @@ test("ctrl+shift+t shortcut is registered and toggles persistence", async () => 
   const ctx = makeCtx((msg) => messages.push(msg));
   await sc!.handler(ctx);
   assert.equal(messages.at(-1), "Sidebar disabled");
-  assert.deepEqual(JSON.parse(readFileSync(configPath, "utf8")), { enabled: false, width: W });
+  assert.deepEqual(JSON.parse(readFileSync(configPath, "utf8")), saved(false));
 
   await sc!.handler(ctx);
   assert.equal(messages.at(-1), "Sidebar enabled");
-  assert.deepEqual(JSON.parse(readFileSync(configPath, "utf8")), { enabled: true, width: W });
+  assert.deepEqual(JSON.parse(readFileSync(configPath, "utf8")), saved(true));
 });
 
 test("command handler and shortcut share the same enabled state", async () => {
@@ -72,5 +73,5 @@ test("command handler and shortcut share the same enabled state", async () => {
   // Shortcut should now toggle FROM disabled -> enabled (shared state)
   await shortcuts.get("ctrl+shift+t")!.handler(ctx);
   assert.equal(messages.at(-1), "Sidebar enabled");
-  assert.deepEqual(JSON.parse(readFileSync(configPath, "utf8")), { enabled: true, width: W });
+  assert.deepEqual(JSON.parse(readFileSync(configPath, "utf8")), saved(true));
 });

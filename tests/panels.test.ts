@@ -4,7 +4,7 @@ import { visibleWidth } from "@earendil-works/pi-tui";
 import type { SidebarContext, TodoItem, WorkspaceFile } from "../types.ts";
 import { renderSessionPanel, estimateCtxLeft } from "../panels/session.ts";
 import { thinkingColorName, spinnerFrameAt, SPINNER_FRAMES } from "../colors.ts";
-import { renderTodosPanel } from "../panels/todos.ts";
+import { renderTodosPanel, selectTodosToShow } from "../panels/todos.ts";
 import { renderWorkspacePanel } from "../panels/workspace.ts";
 
 function strip(s: string): string {
@@ -16,6 +16,7 @@ function makeCtx(overrides: Partial<SidebarContext> = {}): SidebarContext {
     sessionTitle: null,
     sessionId: null,
     todos: [],
+    todosMax: 5,
     branch: "main",
     aheadCount: 0,
     untrackedCount: 0,
@@ -400,6 +401,62 @@ test("todos panel: todo lines indented 1 space from side border", () => {
   const ctx = makeCtx({ todos: [{ id: "1", content: "Task A", status: "pending" }] });
   const s = strip(renderTodosPanel(ctx, 40).find((l) => strip(l).includes("Task A"))!);
   assert.ok(s.startsWith(" ") && !s.startsWith("  "), `todo line indent != 1: "${s}"`);
+});
+
+function mkTodos(n: number): TodoItem[] {
+  return Array.from({ length: n }, (_, i) => ({ id: `t${i + 1}`, content: `task ${i + 1}`, status: "pending" as const }));
+}
+
+test("selectTodosToShow: returns all when under/at cap", () => {
+  const t = mkTodos(3);
+  assert.deepEqual(selectTodosToShow(t, 5), t);
+  assert.deepEqual(selectTodosToShow(mkTodos(5), 5), mkTodos(5));
+});
+
+test("selectTodosToShow: all pending -> most recent N", () => {
+  const t = mkTodos(8);
+  assert.deepEqual(selectTodosToShow(t, 5), t.slice(3));
+});
+
+test("selectTodosToShow: in-progress first, then most recent", () => {
+  const t: TodoItem[] = [
+    { id: "1", content: "a", status: "pending" },
+    { id: "2", content: "b", status: "pending" },
+    { id: "3", content: "c", status: "in_progress" },
+    { id: "4", content: "d", status: "pending" },
+    { id: "5", content: "e", status: "pending" },
+    { id: "6", content: "f", status: "pending" },
+    { id: "7", content: "g", status: "pending" },
+  ];
+  assert.deepEqual(selectTodosToShow(t, 3).map(x => x.id), ["3", "6", "7"]);
+});
+
+test("todos panel: caps to todosMax with '+N more' footer", () => {
+  const text = renderTodosPanel(makeCtx({ todos: mkTodos(8), todosMax: 5 }), 40).map(strip).join("\n");
+  assert.ok(text.includes("task 8"), `expected most recent, got: ${text}`);
+  assert.ok(!text.includes("task 3"), `task 3 should be hidden, got: ${text}`);
+  assert.ok(text.includes("+3 more"), `expected +3 more footer, got: ${text}`);
+});
+
+test("todos panel: in-progress floated to top within cap", () => {
+  const todos: TodoItem[] = [
+    { id: "1", content: "old-pending", status: "pending" },
+    { id: "2", content: "the-active", status: "in_progress" },
+    { id: "3", content: "recent-1", status: "pending" },
+    { id: "4", content: "recent-2", status: "pending" },
+    { id: "5", content: "recent-3", status: "pending" },
+    { id: "6", content: "recent-4", status: "pending" },
+  ];
+  const lines = renderTodosPanel(makeCtx({ todos, todosMax: 3 }), 40).map(strip);
+  const shown = lines.filter(l => /the-active|recent-/.test(l));
+  assert.equal(shown.length, 3, `expected 3 shown, got: ${lines.join("|")}`);
+  assert.ok(shown[0].includes("the-active"), `in-progress should be first, got: ${shown[0]}`);
+});
+
+test("todos panel: no footer under cap", () => {
+  const text = renderTodosPanel(makeCtx({ todos: mkTodos(3), todosMax: 5 }), 40).map(strip).join("\n");
+  assert.ok(text.includes("task 1"), `expected task 1, got: ${text}`);
+  assert.ok(!text.includes("more"), `no footer expected, got: ${text}`);
 });
 
 // ─── Workspace panel ──────────────────────────────────────────────────────────

@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - **Agent activity spinner**: The Session panel model line now shows a small animated spinner just after the `model` label while the agent is working (and a static dot when idle) — a glanceable busy/idle indicator.
+- **Todos window cap**: The Todos panel now caps to a configurable number of items (`todosMax`, default 5) to keep the sidebar compact. It shows the most useful first — in-progress, then most recent — with a ` … +N more` footer for the rest. Set with `/sidebar-tui todos <N>` (persists) or `todosMax` in the config file.
 
 ### Changed
 

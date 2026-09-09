@@ -17,11 +17,15 @@ function agentDir(): string {
 export interface SidebarSettings {
   enabled: boolean;
   width: number;
+  /** Max todos shown in the Todos panel before it caps to the last N (+ a "+N more" footer). */
+  todosMax: number;
 }
 
-export const DEFAULT_SIDEBAR_SETTINGS: SidebarSettings = { enabled: true, width: 45 };
+export const DEFAULT_SIDEBAR_SETTINGS: SidebarSettings = { enabled: true, width: 45, todosMax: 5 };
 export const MIN_SIDEBAR_WIDTH = 10;
 export const MAX_SIDEBAR_WIDTH = 120;
+export const MIN_TODOS_MAX = 1;
+export const MAX_TODOS_MAX = 100;
 
 export function sidebarConfigPath(): string {
   return process.env["PI_SIDEBAR_CONFIG"] || join(agentDir(), "sidebar-tui.json");
@@ -53,6 +57,10 @@ export function loadSidebarSettings(path: string = sidebarConfigPath()): Sidebar
   const w = obj["width"];
   if (typeof w === "number" && Number.isInteger(w) && w >= MIN_SIDEBAR_WIDTH && w <= MAX_SIDEBAR_WIDTH) {
     settings.width = w;
+  }
+  const tm = obj["todosMax"];
+  if (typeof tm === "number" && Number.isInteger(tm) && tm >= MIN_TODOS_MAX && tm <= MAX_TODOS_MAX) {
+    settings.todosMax = tm;
   }
   return settings;
 }

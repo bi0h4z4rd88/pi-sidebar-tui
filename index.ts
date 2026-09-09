@@ -1,5 +1,5 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { loadSidebarSettings, saveSidebarSettings } from "./config.ts";
+import { loadSidebarSettings, saveSidebarSettings, MIN_TODOS_MAX, MAX_TODOS_MAX } from "./config.ts";
 import type { TodoItem, SidebarContext, CtxSample } from "./types.ts";
 import { parseTodos, reconstructTodosFromBranch } from "./parse-todos.ts";
 import { renderSidebar } from "./sidebar.ts";
@@ -15,6 +15,7 @@ const WRITE_TOOLS = new Set(["write", "edit", "bash", "computer"]);
 const initialSettings = loadSidebarSettings();
 let sidebarEnabled = initialSettings.enabled;
 let sidebarWidth = initialSettings.width;
+let todosMax = initialSettings.todosMax;
 let sessionManager: any = null;
 let sessionTitle: string | null = null;
 let todos: TodoItem[] = [];
@@ -133,6 +134,7 @@ function buildSidebarContext(cwd: string | undefined): SidebarContext {
     sessionTitle,
     sessionId: sessionManager?.getSessionId?.() ?? null,
     todos,
+    todosMax,
     branch: ws.branch,
     aheadCount: ws.aheadCount,
     untrackedCount: ws.untrackedCount,
@@ -226,7 +228,7 @@ export default function piSidebar(pi: ExtensionAPI) {
 
   const setSidebarEnabled = (enabled: boolean, ctx: any) => {
     sidebarEnabled = enabled;
-    saveSidebarSettings({ enabled: sidebarEnabled, width: sidebarWidth });
+    saveSidebarSettings({ enabled: sidebarEnabled, width: sidebarWidth, todosMax });
 
     if (!sidebarEnabled) {
       compositorRef?.dispose();
@@ -553,7 +555,7 @@ export default function piSidebar(pi: ExtensionAPI) {
   });
 
   pi.registerCommand("sidebar-tui", {
-    description: "Control sidebar: /sidebar-tui on | off | width <N>",
+    description: "Control sidebar: /sidebar-tui on | off | width <N> | todos <N>",
     handler: async (args, ctx) => {
       currentCwd = (ctx as any).cwd;
       const parts = (args?.trim() ?? "").split(/\s+/);
@@ -566,7 +568,7 @@ export default function piSidebar(pi: ExtensionAPI) {
           return;
         }
         sidebarWidth = n;
-        saveSidebarSettings({ enabled: sidebarEnabled, width: sidebarWidth });
+        saveSidebarSettings({ enabled: sidebarEnabled, width: sidebarWidth, todosMax });
         if (compositorRef && tuiRef) {
           compositorRef.dispose();
           compositorRef = null;
@@ -579,8 +581,21 @@ export default function piSidebar(pi: ExtensionAPI) {
         return;
       }
 
+      if (cmd === "todos") {
+        const n = parseInt(parts[1] ?? "", 10);
+        if (isNaN(n) || n < MIN_TODOS_MAX || n > MAX_TODOS_MAX) {
+          (ctx as any).ui?.notify?.(`Usage: /sidebar-tui todos <${MIN_TODOS_MAX}-${MAX_TODOS_MAX}>`, "warning");
+          return;
+        }
+        todosMax = n;
+        saveSidebarSettings({ enabled: sidebarEnabled, width: sidebarWidth, todosMax });
+        requestRender?.();
+        (ctx as any).ui?.notify?.(`Todos max set to ${n}`, "info");
+        return;
+      }
+
       if (cmd !== "on" && cmd !== "off") {
-        (ctx as any).ui?.notify?.("Usage: /sidebar-tui on | off | width <N>", "warning");
+        (ctx as any).ui?.notify?.("Usage: /sidebar-tui on | off | width <N> | todos <N>", "warning");
         return;
       }
 
