@@ -52,8 +52,9 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
     : NA;
   // Agent activity spinner sits in the model label's trailing slot (2 spaces
   // after "model"), so the model name always starts at the same column.
+  const spinColor = ctx.thinkingLevel ? thinkingColorName(ctx.thinkingLevel) : COLORS.accent;
   const spinGlyph = ctx.agentActive
-    ? fg(COLORS.accent, spinnerFrameAt(ctx.spinnerFrame))
+    ? fg(spinColor, spinnerFrameAt(ctx.spinnerFrame))
     : dim("·");
   const modelLabel = dim(" model ") + spinGlyph + " ";
   // Color the thinking level with pi's own per-level theme color (delegates to
@@ -110,9 +111,8 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
       fg(ctxColor, pctLabel)
     );
 
-    const compact = ctx.autoCompactEnabled === null ? ""
-      : ctx.autoCompactEnabled ? " · auto-compact on" : " · auto-compact off";
-    lines.push(dim(`${" ".repeat(prefix.length)}${tokens} / ${win} tkns${compact}`));
+    const compactSuffix = ctx.autoCompactEnabled ? " - compact auto" : "";
+    lines.push(dim(`${" ".repeat(prefix.length)}${tokens}/${win} tkns${compactSuffix}`));
   } else {
     lines.push(dim(label("ctx")) + fg(COLORS.muted, NA));
   }

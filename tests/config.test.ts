@@ -1,11 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   DEFAULT_SIDEBAR_SETTINGS,
+  getAutoCompactEnabled,
   loadSidebarSettings,
+  readAutoCompactEnabled,
   saveSidebarSettings,
 } from "../config.ts";
 
@@ -65,4 +67,59 @@ test("loadSidebarSettings ignores out-of-range todosMax", () => {
   const p = tmpFile();
   writeFileSync(p, JSON.stringify({ todosMax: 999 }));
   assert.equal(loadSidebarSettings(p).todosMax, 5);
+});
+
+function tmpDirs() {
+  const agent = mkdtempSync(join(tmpdir(), "sidebar-agent-"));
+  const cwd = mkdtempSync(join(tmpdir(), "sidebar-cwd-"));
+  return { agent, cwd };
+}
+
+test("readAutoCompactEnabled defaults to true when settings are missing", () => {
+  const { agent, cwd } = tmpDirs();
+  assert.equal(readAutoCompactEnabled({ agentDir: agent, cwd }), true);
+});
+
+test("readAutoCompactEnabled reads global setting", () => {
+  const { agent, cwd } = tmpDirs();
+  writeFileSync(join(agent, "settings.json"), JSON.stringify({ compaction: { enabled: false } }));
+  assert.equal(readAutoCompactEnabled({ agentDir: agent, cwd }), false);
+});
+
+test("readAutoCompactEnabled project setting overrides global", () => {
+  const { agent, cwd } = tmpDirs();
+  writeFileSync(join(agent, "settings.json"), JSON.stringify({ compaction: { enabled: false } }));
+  mkdirSync(join(cwd, ".pi"), { recursive: true });
+  writeFileSync(join(cwd, ".pi", "settings.json"), JSON.stringify({ compaction: { enabled: true } }));
+  assert.equal(readAutoCompactEnabled({ agentDir: agent, cwd }), true);
+});
+
+test("readAutoCompactEnabled ignores invalid JSON", () => {
+  const { agent, cwd } = tmpDirs();
+  writeFileSync(join(agent, "settings.json"), "{not json");
+  assert.equal(readAutoCompactEnabled({ agentDir: agent, cwd }), true);
+});
+
+test("getAutoCompactEnabled updates when global setting changes", () => {
+  const { agent, cwd } = tmpDirs();
+  const options = { agentDir: agent, cwd };
+  writeFileSync(join(agent, "settings.json"), JSON.stringify({ compaction: { enabled: false } }));
+  assert.equal(getAutoCompactEnabled(options), false);
+  assert.equal(getAutoCompactEnabled(options), false);
+
+  writeFileSync(join(agent, "settings.json"), JSON.stringify({ compaction: { enabled: true } }));
+  assert.equal(getAutoCompactEnabled(options), true);
+});
+
+test("getAutoCompactEnabled updates when project setting changes", () => {
+  const { agent, cwd } = tmpDirs();
+  const options = { agentDir: agent, cwd };
+  writeFileSync(join(agent, "settings.json"), JSON.stringify({ compaction: { enabled: false } }));
+  mkdirSync(join(cwd, ".pi"), { recursive: true });
+
+  writeFileSync(join(cwd, ".pi", "settings.json"), JSON.stringify({ compaction: { enabled: true } }));
+  assert.equal(getAutoCompactEnabled(options), true);
+
+  writeFileSync(join(cwd, ".pi", "settings.json"), JSON.stringify({ compaction: { enabled: false } }));
+  assert.equal(getAutoCompactEnabled(options), false);
 });

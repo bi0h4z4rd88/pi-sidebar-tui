@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -29,6 +29,74 @@ export const MAX_TODOS_MAX = 100;
 
 export function sidebarConfigPath(): string {
   return process.env["PI_SIDEBAR_CONFIG"] || join(agentDir(), "sidebar-tui.json");
+}
+
+export interface AutoCompactReadOptions {
+  agentDir?: string;
+  cwd?: string;
+}
+
+function readCompactionEnabled(settingsPath: string): boolean | null {
+  let raw: string;
+  try {
+    raw = readFileSync(settingsPath, "utf8");
+  } catch {
+    return null;
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (typeof parsed !== "object" || parsed === null) return null;
+
+  const compaction = (parsed as Record<string, unknown>)["compaction"];
+  if (typeof compaction !== "object" || compaction === null) return null;
+  const enabled = (compaction as Record<string, unknown>)["enabled"];
+  return typeof enabled === "boolean" ? enabled : null;
+}
+
+export function readAutoCompactEnabled(options: AutoCompactReadOptions = {}): boolean {
+  const globalPath = join(options.agentDir ?? agentDir(), "settings.json");
+  const projectPath = options.cwd ? join(options.cwd, ".pi", "settings.json") : null;
+
+  const project = projectPath ? readCompactionEnabled(projectPath) : null;
+  if (project !== null) return project;
+
+  const global = readCompactionEnabled(globalPath);
+  if (global !== null) return global;
+
+  return true;
+}
+
+function statRevision(path: string | null): string {
+  if (!path) return "missing";
+  try {
+    const stats = statSync(path);
+    return `${stats.size}:${stats.mtimeNs}`;
+  } catch {
+    return "missing";
+  }
+}
+
+const autoCompactCache = new Map<string, { revision: string; value: boolean }>();
+
+export function getAutoCompactEnabled(options: AutoCompactReadOptions = {}): boolean {
+  const resolvedAgentDir = options.agentDir ?? agentDir();
+  const cwd = options.cwd ?? "";
+  const globalPath = join(resolvedAgentDir, "settings.json");
+  const projectPath = cwd ? join(cwd, ".pi", "settings.json") : null;
+
+  const cacheKey = `${resolvedAgentDir}\u0000${cwd}`;
+  const revision = `${statRevision(globalPath)}|${statRevision(projectPath)}`;
+  const cached = autoCompactCache.get(cacheKey);
+  if (cached && cached.revision === revision) return cached.value;
+
+  const value = readAutoCompactEnabled({ agentDir: resolvedAgentDir, cwd: cwd || undefined });
+  autoCompactCache.set(cacheKey, { revision, value });
+  return value;
 }
 
 export function loadSidebarSettings(path: string = sidebarConfigPath()): SidebarSettings {

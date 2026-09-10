@@ -1,5 +1,5 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { loadSidebarSettings, saveSidebarSettings, MIN_TODOS_MAX, MAX_TODOS_MAX } from "./config.ts";
+import { loadSidebarSettings, getAutoCompactEnabled, saveSidebarSettings, MIN_TODOS_MAX, MAX_TODOS_MAX } from "./config.ts";
 import type { TodoItem, SidebarContext, CtxSample } from "./types.ts";
 import { parseTodos, reconstructTodosFromBranch } from "./parse-todos.ts";
 import { renderSidebar } from "./sidebar.ts";
@@ -31,7 +31,6 @@ let cacheWrite = 0;
 let sessionCost = 0;
 let turnCount = 0;
 let activeTool: { name: string; startedAt: number } | null = null;
-let autoCompactEnabled: boolean | null = null;
 let sessionStartMs = Date.now();
 let modelProvider: string | null = null;
 let agentStartMs: number | null = null;
@@ -152,7 +151,7 @@ function buildSidebarContext(cwd: string | undefined): SidebarContext {
     sessionCost,
     turnCount,
     activeTool,
-    autoCompactEnabled,
+    autoCompactEnabled: getAutoCompactEnabled({ cwd }),
     sessionStartMs,
     mcpServers: getMcpServers(),
     modelProvider,
@@ -266,7 +265,6 @@ export default function piSidebar(pi: ExtensionAPI) {
     sessionTimerHandle = setInterval(() => requestRender?.(), 30_000);
     activeTool = null;
     turnCount = 0;
-    autoCompactEnabled = (ctx as any).settingsManager?.getCompactionSettings?.()?.enabled ?? null;
     // Seed usage totals from existing session entries (handles resume)
     { let inSum = 0, outSum = 0, cacheSum = 0, costSum = 0, turns = 0;
       for (const e of (ctx.sessionManager.getBranch?.() ?? [])) {

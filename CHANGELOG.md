@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.3] - 2026-09-10
+
+### Added
+
+- **Auto-compact status on the context line**: The context detail line now shows `- compact auto` when compaction is enabled, and omits the suffix when disabled. The setting is read from pi settings files (`~/.pi/agent/settings.json`, with `.pi/settings.json` overriding for the current project; default on) and re-checked on sidebar refresh when the file changes.
+
+### Changed
+
+- **Active spinner color**: The agent activity spinner now uses the current thinking-level color instead of the fixed accent color, falling back to accent when the level is unknown.
+- **Context token format**: The context detail line uses `80k/200k tkns` (removed spaces around `/`) to save width.
+- **Todo in-progress glyph**: In-progress todos now use `◐` instead of `●`.
+
+### Fixed
+
+- **Auto-compact status not showing**: The previous lookup used an unavailable `ctx.settingsManager` path; the sidebar now reads the setting directly from pi settings files.
+
 ## [1.7.2] - 2026-09-07
 
 ### Added

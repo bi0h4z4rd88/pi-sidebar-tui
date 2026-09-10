@@ -27,7 +27,7 @@ Displays a real-time sidebar panel inside the pi terminal UI showing session met
 
 ### Todos Panel
 - Parses todo items from tool calls (`todo` tool)
-- Status glyphs: `○` pending, `●` in progress, `✓` completed
+- Status glyphs: `○` pending, `◐` in progress, `✓` completed
 - Progress counter: `Todos (2/5)`
 - Sub-action annotations for in-progress items
 

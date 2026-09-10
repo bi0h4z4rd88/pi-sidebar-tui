@@ -95,14 +95,31 @@ test("session panel: context renders as fill bar with rounded pct label", () => 
 test("session panel: context detail line shows token counts + unit", () => {
   const ctx = makeCtx({ contextPercent: 40, contextTokens: 80000, contextWindow: 200000 });
   const text = renderSessionPanel(ctx, 40).map(strip).join("\n");
-  assert.ok(text.includes("80k / 200k"), `missing token counts, got: ${text}`);
+  assert.ok(text.includes("80k/200k"), `missing token counts, got: ${text}`);
   assert.ok(text.includes("tkns"), `missing 'tkns' unit, got: ${text}`);
 });
 
-test("session panel: context detail line includes auto-compact status", () => {
+test("session panel: context detail line includes compact auto status when enabled", () => {
   const ctx = makeCtx({ contextPercent: 40, contextTokens: 80000, contextWindow: 200000, autoCompactEnabled: true });
   const text = renderSessionPanel(ctx, 40).map(strip).join("\n");
-  assert.ok(text.includes("auto-compact on"), `missing auto-compact status, got: ${text}`);
+  assert.ok(text.includes("80k/200k tkns - compact auto"), `missing compact auto status, got: ${text}`);
+});
+
+test("session panel: compact auto status fits within width 40", () => {
+  const ctx = makeCtx({ contextPercent: 40, contextTokens: 80000, contextWindow: 200000, autoCompactEnabled: true });
+  const lines = renderSessionPanel(ctx, 40);
+  for (const line of lines) {
+    assert.ok(visibleWidth(strip(line)) <= 40, `line too wide: "${strip(line)}"`);
+  }
+  const text = lines.map(strip).join("\n");
+  assert.ok(text.includes("- compact auto"), `missing compact auto status, got: ${text}`);
+});
+
+test("session panel: no compact auto suffix when disabled", () => {
+  const ctx = makeCtx({ contextPercent: 40, contextTokens: 80000, contextWindow: 200000, autoCompactEnabled: false });
+  const text = renderSessionPanel(ctx, 40).map(strip).join("\n");
+  assert.ok(text.includes("80k/200k tkns"), `missing token counts, got: ${text}`);
+  assert.ok(!text.includes("compact auto"), `should omit compact auto when disabled, got: ${text}`);
 });
 
 test("session panel: context bar fits within width at high usage", () => {
@@ -163,6 +180,31 @@ test("session panel: model line shows spinner glyph when agent active", () => {
 test("session panel: model line shows idle dot when agent not active", () => {
   const line = modelLine(makeCtx({ model: "claude", agentActive: false, spinnerFrame: 0 }));
   assert.ok(line.includes("·"), `expected idle dot, got: ${line}`);
+});
+
+function rawModelLine(ctx: SidebarContext): string {
+  return renderSessionPanel(ctx, 40).find(l => strip(l).includes("model") && !strip(l).includes("─"))!;
+}
+
+function sgrCodeBefore(line: string, glyph: string): string | null {
+  const i = line.indexOf(glyph);
+  if (i === -1) return null;
+  return /\x1b\[([0-9;]*)m$/.exec(line.slice(0, i))?.[1] ?? null;
+}
+
+test("session panel: active spinner uses high thinking-level color", () => {
+  const line = rawModelLine(makeCtx({ model: "claude", agentActive: true, spinnerFrame: 0, thinkingLevel: "high" }));
+  assert.equal(sgrCodeBefore(line, SPINNER_FRAMES[0]!), "38;2;178;148;187", `wrong spinner color, got: ${line}`);
+});
+
+test("session panel: active spinner uses off thinking-level color", () => {
+  const line = rawModelLine(makeCtx({ model: "claude", agentActive: true, spinnerFrame: 0, thinkingLevel: "off" }));
+  assert.equal(sgrCodeBefore(line, SPINNER_FRAMES[0]!), "38;2;85;85;85", `wrong spinner color, got: ${line}`);
+});
+
+test("session panel: active spinner falls back to accent when thinking level unknown", () => {
+  const line = rawModelLine(makeCtx({ model: "claude", agentActive: true, spinnerFrame: 0, thinkingLevel: null }));
+  assert.equal(sgrCodeBefore(line, SPINNER_FRAMES[0]!), "38;2;254;188;56", `wrong spinner color, got: ${line}`);
 });
 
 // ─── Session panel: context estimate ──────────────────────────────────────────
@@ -373,7 +415,7 @@ test("todos panel: correct glyphs for each status", () => {
   });
   const text = renderTodosPanel(ctx, 60).map(strip).join("\n");
   assert.ok(text.includes("✓"), "missing ✓ for completed");
-  assert.ok(text.includes("●"), "missing ● for in_progress");
+  assert.ok(text.includes("◐"), "missing ◐ for in_progress");
   assert.ok(text.includes("○"), "missing ○ for pending");
 });
 

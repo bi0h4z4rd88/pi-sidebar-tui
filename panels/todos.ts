@@ -4,7 +4,7 @@ import { dim, fg, COLORS, panelHeader, trunc } from "../colors.ts";
 
 const GLYPHS: Record<TodoStatus, string> = {
   completed: "✓",
-  in_progress: "●",
+  in_progress: "◐",
   pending: "○",
 };
 
