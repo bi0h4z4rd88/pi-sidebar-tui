@@ -21,7 +21,7 @@ export interface SidebarSettings {
   todosMax: number;
 }
 
-export const DEFAULT_SIDEBAR_SETTINGS: SidebarSettings = { enabled: true, width: 45, todosMax: 5 };
+export const DEFAULT_SIDEBAR_SETTINGS: SidebarSettings = { enabled: true, width: 45, todosMax: 10 };
 export const MIN_SIDEBAR_WIDTH = 10;
 export const MAX_SIDEBAR_WIDTH = 120;
 export const MIN_TODOS_MAX = 1;

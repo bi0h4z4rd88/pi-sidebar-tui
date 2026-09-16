@@ -1,11 +1,14 @@
 import type { SidebarContext } from "../types.ts";
-import { dim, fg, COLORS, panelHeader } from "../colors.ts";
+import { dim, fg, COLORS, panelHeader, padToMin } from "../colors.ts";
+
+// Reserved content rows so the panel footprint is stable (header + this many).
+const MIN_MCP_ROWS = 2;
 
 export function renderMcpPanel(ctx: SidebarContext, width: number): string[] {
-  const servers = ctx.mcpServers;
-  if (!servers || servers.length === 0) return [];
+  const servers = ctx.mcpServers ?? [];
 
-  const lines: string[] = [...panelHeader("MCP Servers", width)];
+  const header = panelHeader("MCP Servers", width);
+  const content: string[] = [];
 
   for (const srv of servers) {
     const dot = srv.disabled
@@ -26,8 +29,8 @@ export function renderMcpPanel(ctx: SidebarContext, width: number): string[] {
       ? srv.name.slice(0, nameMax - 1) + "…"
       : srv.name;
 
-    lines.push(dim(" ") + dot + " " + fg(COLORS.accent, name) + suffix);
+    content.push(dim(" ") + dot + " " + fg(COLORS.accent, name) + suffix);
   }
 
-  return lines;
+  return [...header, ...padToMin(content, MIN_MCP_ROWS)];
 }

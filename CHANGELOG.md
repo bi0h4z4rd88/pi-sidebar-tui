@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.4] - 2026-09-16
+
+### Changed
+
+- **Reserved panel space**: The MCP and Todos panels now reserve a fixed block of rows up front (MCP = header + 2, Todos = header + 7) so the sidebar layout is stable and pre-defined. Panels pad with blank rows when content is short and grow when content exceeds the reserved space (Todos still caps at `todosMax` with its ` … +N more` footer). The MCP panel header is now always visible, even with no servers.
+- **Context bar color thresholds**: The context progress bar now colors by raw window usage — green below 50%, yellow 50–80%, red above 80% (red uses the theme's `error` color). Replaces the previous pace-aware escalation (green <70% / yellow 70–90% / red >90%).
+- **Default todos window**: New-install default `todosMax` changed from 5 to 10. Existing users keep their configured value (`~/.pi/agent/sidebar-tui.json`).
+
 ## [1.7.3] - 2026-09-10
 
 ### Added

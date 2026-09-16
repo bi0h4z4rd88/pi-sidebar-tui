@@ -18,6 +18,7 @@ export const COLORS = {
   accent:  "accent",
   success: "success",
   warning: "warning",
+  error:   "error",
   header:  "text",
   muted:   "muted",
 } as const;
@@ -27,6 +28,7 @@ const FALLBACK_HEX: Record<string, string> = {
   accent:  "#febc38",
   success: "#5faf5f",
   warning: "#ff9500",
+  error:   "#e05561",
   text:    "#00afaf",
   muted:   "#6c6c6c",
   // Thinking-level tokens — default values from pi's dark theme (used only
@@ -124,4 +126,10 @@ export function panelHeader(title: string, width: number): string[] {
     bold(` ${title}`),
     dim("─".repeat(separatorLen)),
   ];
+}
+
+/** Pad a list of lines with empty rows until it has at least `min` rows. */
+export function padToMin(lines: string[], min: number): string[] {
+  if (lines.length >= min) return lines;
+  return [...lines, ...Array(min - lines.length).fill("")];
 }

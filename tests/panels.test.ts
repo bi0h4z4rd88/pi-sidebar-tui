@@ -330,41 +330,38 @@ test("session panel: left row sits under turns row (col1 order)", () => {
   assert.ok(leftIdx > turnsIdx, `expected left under turns (turns=${turnsIdx}, left=${leftIdx})`);
 });
 
-// ─── Session panel: pace-aware context bar ───────────────────────────────────
+// ─── Session panel: context bar color (by usage %) ──────────────────────────
 
 function barLine(ctx: SidebarContext, width = 40): string | undefined {
   return renderSessionPanel(ctx, width).find(l => strip(l).includes("█"));
 }
 
 const HEX_SUCCESS = "38;2;95;175;95";
+const HEX_ERROR = "38;2;224;85;97";
 
-test("ctx bar: escalates to warning when estimate < 5 turns despite low pct", () => {
-  // pct 40 (would be success) but pace 2500/turn, remaining 10000 → 4 turns
-  const ctx = makeCtxEst({ contextTokens: 190000, contextPercent: 40, ctxSamples: [S(187500, 1), S(190000, 2)] });
-  const bar = barLine(ctx);
+test("ctx bar: green (success) below 50%", () => {
+  const bar = barLine(makeCtx({ contextPercent: 30 }));
   assert.ok(bar, "no bar line");
-  assert.ok(bar!.includes(HEX_WARNING), `expected warning bar, got: "${bar}"`);
+  assert.ok(bar!.includes(HEX_SUCCESS), `expected green bar, got: "${bar}"`);
 });
 
-test("ctx bar: escalates to accent when estimate 5-19 turns", () => {
-  const ctx = makeCtxEst({ contextPercent: 40, ctxSamples: [S(100000, 0), S(100625, 1)] }); // 16 turns
-  const bar = barLine(ctx);
+test("ctx bar: yellow (accent) between 50% and 80%", () => {
+  const bar = barLine(makeCtx({ contextPercent: 65 }));
   assert.ok(bar, "no bar line");
-  assert.ok(bar!.includes(HEX_ACCENT), `expected accent bar, got: "${bar}"`);
+  assert.ok(bar!.includes(HEX_ACCENT), `expected yellow bar, got: "${bar}"`);
 });
 
-test("ctx bar: stays success when estimate >= 20 turns and pct low", () => {
-  const ctx = makeCtxEst({ contextPercent: 40, ctxSamples: [S(100000, 0), S(100250, 1)] }); // 40 turns
-  const bar = barLine(ctx);
+test("ctx bar: red (error) above 80%", () => {
+  const bar = barLine(makeCtx({ contextPercent: 90 }));
   assert.ok(bar, "no bar line");
-  assert.ok(bar!.includes(HEX_SUCCESS), `expected success bar, got: "${bar}"`);
+  assert.ok(bar!.includes(HEX_ERROR), `expected red bar, got: "${bar}"`);
 });
 
-test("ctx bar: pct-based warning still applies without samples", () => {
-  const ctx = makeCtxEst({ contextPercent: 95, ctxSamples: [] });
-  const bar = barLine(ctx);
-  assert.ok(bar, "no bar line");
-  assert.ok(bar!.includes(HEX_WARNING), `expected warning bar, got: "${bar}"`);
+test("ctx bar: boundaries — 49 green, 50 yellow, 80 yellow, 81 red", () => {
+  assert.ok(barLine(makeCtx({ contextPercent: 49 }))!.includes(HEX_SUCCESS), "49 should be green");
+  assert.ok(barLine(makeCtx({ contextPercent: 50 }))!.includes(HEX_ACCENT), "50 should be yellow");
+  assert.ok(barLine(makeCtx({ contextPercent: 80 }))!.includes(HEX_ACCENT), "80 should be yellow");
+  assert.ok(barLine(makeCtx({ contextPercent: 81 }))!.includes(HEX_ERROR), "81 should be red");
 });
 
 test("session panel: left row fits width at narrow sidebar", () => {
@@ -380,6 +377,22 @@ test("session panel: left row fits width at narrow sidebar", () => {
 test("todos panel: empty shows (no todos)", () => {
   const lines = renderTodosPanel(makeCtx({ todos: [] }), 40);
   assert.ok(lines.map(strip).join("\n").includes("no todos"));
+});
+
+test("todos panel: empty reserves header + 7 rows", () => {
+  const lines = renderTodosPanel(makeCtx({ todos: [] }), 40);
+  assert.equal(lines.length, 9, `expected 9 rows (2 header + 7), got ${lines.length}`);
+});
+
+test("todos panel: few todos padded to 7 content rows", () => {
+  const lines = renderTodosPanel(makeCtx({ todos: mkTodos(3) }), 40);
+  assert.equal(lines.length, 9, `expected 9 rows, got ${lines.length}`);
+});
+
+test("todos panel: grows beyond reserved when cap + footer exceeds 7", () => {
+  const lines = renderTodosPanel(makeCtx({ todos: mkTodos(12), todosMax: 10 }), 40);
+  assert.equal(lines.length, 13, `expected 13 rows (2 header + 10 todos + footer), got ${lines.length}`);
+  assert.ok(lines.map(strip).join("\n").includes("+2 more"), `expected +2 more footer`);
 });
 
 test("todos panel: header count is done/total", () => {

@@ -1,6 +1,9 @@
 import { visibleWidth } from "@earendil-works/pi-tui";
 import type { SidebarContext, TodoItem, TodoStatus } from "../types.ts";
-import { dim, fg, COLORS, panelHeader, trunc } from "../colors.ts";
+import { dim, fg, COLORS, panelHeader, padToMin, trunc } from "../colors.ts";
+
+// Reserved content rows so the panel footprint is stable (header + this many).
+const MIN_TODO_ROWS = 7;
 
 const GLYPHS: Record<TodoStatus, string> = {
   completed: "✓",
@@ -62,24 +65,25 @@ export function renderTodosPanel(ctx: SidebarContext, width: number): string[] {
   const { todos, todosMax } = ctx;
   const done = todos.filter(t => t.status === "completed").length;
   const title = `Todos (${done}/${todos.length})`;
-  const lines: string[] = [...panelHeader(title, width)];
+  const header = panelHeader(title, width);
+
+  const content: string[] = [];
 
   if (todos.length === 0) {
-    lines.push(dim(" (no todos)"));
-    return lines;
+    content.push(dim(" (no todos)"));
+  } else {
+    const max = typeof todosMax === "number" && todosMax > 0 ? todosMax : todos.length;
+    const shown = selectTodosToShow(todos, max);
+    const hidden = todos.length - shown.length;
+
+    for (const todo of shown) {
+      content.push(renderTodoLine(todo, width));
+    }
+
+    if (hidden > 0) {
+      content.push(dim(` … +${hidden} more`));
+    }
   }
 
-  const max = typeof todosMax === "number" && todosMax > 0 ? todosMax : todos.length;
-  const shown = selectTodosToShow(todos, max);
-  const hidden = todos.length - shown.length;
-
-  for (const todo of shown) {
-    lines.push(renderTodoLine(todo, width));
-  }
-
-  if (hidden > 0) {
-    lines.push(dim(` … +${hidden} more`));
-  }
-
-  return lines;
+  return [...header, ...padToMin(content, MIN_TODO_ROWS)];
 }

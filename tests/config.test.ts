@@ -23,13 +23,13 @@ test("loadSidebarSettings returns defaults when file is missing", () => {
 test("saveSidebarSettings then loadSidebarSettings round-trips", () => {
   const p = tmpFile();
   saveSidebarSettings({ enabled: false, width: 64 }, p);
-  assert.deepEqual(loadSidebarSettings(p), { enabled: false, width: 64, todosMax: 5 });
+  assert.deepEqual(loadSidebarSettings(p), { enabled: false, width: 64, todosMax: 10 });
 });
 
 test("saveSidebarSettings creates parent directory if missing", () => {
   const p = join(mkdtempSync(join(tmpdir(), "sidebar-cfg-")), "nested", "dir", "sidebar-tui.json");
   saveSidebarSettings({ enabled: true, width: 50 }, p);
-  assert.deepEqual(loadSidebarSettings(p), { enabled: true, width: 50, todosMax: 5 });
+  assert.deepEqual(loadSidebarSettings(p), { enabled: true, width: 50, todosMax: 10 });
 });
 
 test("loadSidebarSettings returns defaults for corrupt JSON", () => {
@@ -53,8 +53,8 @@ test("loadSidebarSettings falls back to default width for non-integer width", ()
   assert.equal(s.width, DEFAULT_SIDEBAR_SETTINGS.width);
 });
 
-test("loadSidebarSettings defaults todosMax to 5 when missing", () => {
-  assert.equal(loadSidebarSettings(tmpFile()).todosMax, 5);
+test("loadSidebarSettings defaults todosMax to 10 when missing", () => {
+  assert.equal(loadSidebarSettings(tmpFile()).todosMax, 10);
 });
 
 test("saveSidebarSettings round-trips a non-default todosMax", () => {
@@ -66,7 +66,7 @@ test("saveSidebarSettings round-trips a non-default todosMax", () => {
 test("loadSidebarSettings ignores out-of-range todosMax", () => {
   const p = tmpFile();
   writeFileSync(p, JSON.stringify({ todosMax: 999 }));
-  assert.equal(loadSidebarSettings(p).todosMax, 5);
+  assert.equal(loadSidebarSettings(p).todosMax, 10);
 });
 
 function tmpDirs() {

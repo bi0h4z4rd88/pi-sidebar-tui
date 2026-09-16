@@ -86,13 +86,8 @@ export function renderSessionPanel(ctx: SidebarContext, width: number): string[]
     const pct = ctx.contextPercent;
     const tokens = ctx.contextTokens !== null ? formatK(ctx.contextTokens) : "?";
     const win = ctx.contextWindow !== null ? formatK(ctx.contextWindow) : "?";
-    // Pace-aware severity: estimate drives escalation (e.g. 40% but 3 turns to full)
-    const estSeverity = ctxEst.kind === "left"
-      ? (ctxEst.turns < 5 ? 2 : ctxEst.turns < 20 ? 1 : 0)
-      : 0;
-    const pctSeverity = pct > 90 ? 2 : pct > 70 ? 1 : 0;
-    const sev = Math.max(estSeverity, pctSeverity);
-    const ctxColor = sev === 2 ? COLORS.warning : sev === 1 ? COLORS.accent : COLORS.success;
+    // Bar color by window usage: green <50%, yellow 50-80%, red >80%
+    const ctxColor = pct < 50 ? COLORS.success : pct <= 80 ? COLORS.accent : COLORS.error;
 
     const prefix = label("ctx");
     const pctLabel = `${Math.round(pct)}%`;
