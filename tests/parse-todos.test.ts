@@ -100,3 +100,59 @@ test("reconstructTodosFromBranch: ignores non-todo tool results", () => {
   ];
   assert.deepEqual(reconstructTodosFromBranch(branch), []);
 });
+
+// plan_tracker (pi-superpowers) carries its snapshot in `details.tasks` with
+// `{ name, status }` items where status is pending | in_progress | complete.
+// Without this the Todos panel stays at (0/0) while the chat widget shows
+// e.g. "Tasks: →○○○ (0/4)".
+
+test("parses plan_tracker result details ({name, status})", () => {
+  const details = {
+    action: "update",
+    tasks: [
+      { name: "Repro", status: "in_progress" },
+      { name: "Fix", status: "pending" },
+      { name: "CI", status: "complete" },
+    ],
+  };
+  const parsed = parseTodos(details);
+  assert.ok(Array.isArray(parsed));
+  assert.equal(parsed!.length, 3);
+  assert.equal(parsed![0].content, "Repro");
+  assert.equal(parsed![0].status, "in_progress");
+  assert.equal(parsed![1].status, "pending");
+  assert.equal(parsed![2].status, "completed");
+});
+
+test("parses plan_tracker init input (plain string array)", () => {
+  const parsed = parseTodos({ action: "init", tasks: ["a", "b"] });
+  assert.ok(Array.isArray(parsed));
+  assert.equal(parsed!.length, 2);
+  assert.equal(parsed![0].content, "a");
+  assert.equal(parsed![0].status, "pending");
+});
+
+test("plan_tracker update input (no list) returns null", () => {
+  assert.equal(parseTodos({ action: "update", index: 0, status: "complete" }), null);
+});
+
+test("reconstructTodosFromBranch: takes last plan_tracker snapshot", () => {
+  const branch = [
+    { type: "message", message: { role: "toolResult", toolName: "plan_tracker", details: { action: "init", tasks: [{ name: "a", status: "pending" }] } } },
+    { type: "message", message: { role: "toolResult", toolName: "plan_tracker", details: { action: "update", tasks: [{ name: "a", status: "complete" }, { name: "b", status: "pending" }] } } },
+  ];
+  const todos = reconstructTodosFromBranch(branch);
+  assert.equal(todos.length, 2);
+  assert.equal(todos[0].status, "completed");
+  assert.equal(todos[1].content, "b");
+});
+
+test("reconstructTodosFromBranch: skips plan_tracker error details", () => {
+  const branch = [
+    { type: "message", message: { role: "toolResult", toolName: "plan_tracker", details: { action: "update", tasks: [{ name: "a", status: "pending" }] } } },
+    { type: "message", message: { role: "toolResult", toolName: "plan_tracker", details: { action: "update", tasks: [], error: "index out of range" } } },
+  ];
+  const todos = reconstructTodosFromBranch(branch);
+  assert.equal(todos.length, 1);
+  assert.equal(todos[0].content, "a");
+});

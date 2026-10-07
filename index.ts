@@ -9,7 +9,7 @@ import { getMcpServers, invalidateMcpCache, type LiveMcpTool } from "./mcp.ts";
 import { loadCavemanConfig, resolveCavemanLevel, cavemanInterval, type CavemanConfig } from "./caveman.ts";
 import { setPiTheme } from "./colors.ts";
 
-const TODO_TOOL_PATTERN = /todo/i;
+const TODO_TOOL_PATTERN = /todo|plan_tracker/i;
 const WRITE_TOOLS = new Set(["write", "edit", "bash", "computer"]);
 
 const initialSettings = loadSidebarSettings();
