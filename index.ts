@@ -1,5 +1,5 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { loadSidebarSettings, getAutoCompactEnabled, saveSidebarSettings, MIN_TODOS_MAX, MAX_TODOS_MAX, MIN_SCROLL_SPEED, MAX_SCROLL_SPEED } from "./config.ts";
+import { loadSidebarSettings, getAutoCompactEnabled, saveSidebarSettings, MIN_TODOS_MAX, MAX_TODOS_MAX, MIN_SCROLL_SPEED, MAX_SCROLL_SPEED, MIN_MAIN_WIDTH, MAX_MAIN_WIDTH } from "./config.ts";
 import type { TodoItem, SidebarContext, CtxSample } from "./types.ts";
 import { parseTodos, reconstructTodosFromBranch } from "./parse-todos.ts";
 import { getWorkspaceData, invalidateWorkspaceCache } from "./workspace.ts";
@@ -16,6 +16,7 @@ let sidebarEnabled = initialSettings.enabled;
 let sidebarWidth = initialSettings.width;
 let todosMax = initialSettings.todosMax;
 let scrollSpeed = initialSettings.scrollSpeed;
+let minMainWidth = initialSettings.minMainWidth;
 let sessionManager: any = null;
 let sessionTitle: string | null = null;
 let todos: TodoItem[] = [];
@@ -238,17 +239,30 @@ export default function piSidebar(pi: ExtensionAPI) {
     }, 90);
   };
 
+  const installCompositor = (tui: any) => {
+    const comp = new SidebarCompositor(tui, () => buildSidebarContext(currentCwd), sidebarWidth, minMainWidth);
+    comp.install();
+    compositorRef = comp;
+  };
+
+  // Rebuild a live sidebar after its geometry settings change.
+  const reinstallCompositor = () => {
+    if (!compositorRef || !tuiRef) return;
+    compositorRef.dispose();
+    compositorRef = null;
+    installCompositor(tuiRef);
+    tuiRef.requestRender?.();
+  };
+
   const setSidebarEnabled = (enabled: boolean, ctx: any) => {
     sidebarEnabled = enabled;
-    saveSidebarSettings({ enabled: sidebarEnabled, width: sidebarWidth, todosMax, scrollSpeed });
+    saveSidebarSettings({ enabled: sidebarEnabled, width: sidebarWidth, todosMax, scrollSpeed, minMainWidth });
 
     if (!sidebarEnabled) {
       compositorRef?.dispose();
       compositorRef = null;
     } else if (tuiRef && !compositorRef) {
-      const comp = new SidebarCompositor(tuiRef, () => buildSidebarContext(currentCwd), sidebarWidth);
-      comp.install();
-      compositorRef = comp;
+      installCompositor(tuiRef);
       requestRender?.();
     }
 
@@ -339,15 +353,7 @@ export default function piSidebar(pi: ExtensionAPI) {
       setPiTheme(_theme);
       tuiRef = tui;
 
-      if (sidebarEnabled) {
-        const comp = new SidebarCompositor(
-          tui,
-          () => buildSidebarContext(currentCwd),
-          sidebarWidth,
-        );
-        comp.install();
-        compositorRef = comp;
-      }
+      if (sidebarEnabled) installCompositor(tui);
 
       return {
         dispose() {
@@ -566,7 +572,7 @@ export default function piSidebar(pi: ExtensionAPI) {
   });
 
   pi.registerCommand("sidebar-tui", {
-    description: "Control sidebar: /sidebar-tui on | off | width <N> | todos <N>",
+    description: "Control sidebar: /sidebar-tui on | off | width <N> | todos <N> | min-main <N>",
     handler: async (args, ctx) => {
       currentCwd = (ctx as any).cwd;
       const parts = (args?.trim() ?? "").split(/\s+/);
@@ -579,16 +585,28 @@ export default function piSidebar(pi: ExtensionAPI) {
           return;
         }
         sidebarWidth = n;
-        saveSidebarSettings({ enabled: sidebarEnabled, width: sidebarWidth, todosMax, scrollSpeed });
-        if (compositorRef && tuiRef) {
-          compositorRef.dispose();
-          compositorRef = null;
-          const comp = new SidebarCompositor(tuiRef, () => buildSidebarContext(currentCwd), sidebarWidth);
-          comp.install();
-          compositorRef = comp;
-          requestRender?.();
-        }
+        saveSidebarSettings({ enabled: sidebarEnabled, width: sidebarWidth, todosMax, scrollSpeed, minMainWidth });
+        reinstallCompositor();
         (ctx as any).ui?.notify?.(`Sidebar width set to ${n}`, "info");
+        return;
+      }
+
+      if (cmd === "min-main") {
+        const raw = parts[1] ?? "";
+        const n = Number(raw);
+        if (!/^\d+$/.test(raw) || n < MIN_MAIN_WIDTH || n > MAX_MAIN_WIDTH) {
+          (ctx as any).ui?.notify?.(`Usage: /sidebar-tui min-main <${MIN_MAIN_WIDTH}-${MAX_MAIN_WIDTH}>`, "warning");
+          return;
+        }
+        minMainWidth = n;
+        saveSidebarSettings({ enabled: sidebarEnabled, width: sidebarWidth, todosMax, scrollSpeed, minMainWidth });
+        reinstallCompositor();
+        (ctx as any).ui?.notify?.(
+          n === 0
+            ? "Sidebar never hides for a narrow terminal"
+            : `Sidebar hides when pi's area would be narrower than ${n} columns`,
+          "info",
+        );
         return;
       }
 
@@ -599,7 +617,7 @@ export default function piSidebar(pi: ExtensionAPI) {
           return;
         }
         todosMax = n;
-        saveSidebarSettings({ enabled: sidebarEnabled, width: sidebarWidth, todosMax, scrollSpeed });
+        saveSidebarSettings({ enabled: sidebarEnabled, width: sidebarWidth, todosMax, scrollSpeed, minMainWidth });
         requestRender?.();
         (ctx as any).ui?.notify?.(`Todos max set to ${n}`, "info");
         return;
@@ -612,14 +630,14 @@ export default function piSidebar(pi: ExtensionAPI) {
           return;
         }
         scrollSpeed = n;
-        saveSidebarSettings({ enabled: sidebarEnabled, width: sidebarWidth, todosMax, scrollSpeed });
+        saveSidebarSettings({ enabled: sidebarEnabled, width: sidebarWidth, todosMax, scrollSpeed, minMainWidth });
         requestRender?.();
         (ctx as any).ui?.notify?.(`Scroll speed set to ${n} lines`, "info");
         return;
       }
 
       if (cmd !== "on" && cmd !== "off") {
-        (ctx as any).ui?.notify?.("Usage: /sidebar-tui on | off | width <N> | todos <N> | scroll <N>", "warning");
+        (ctx as any).ui?.notify?.("Usage: /sidebar-tui on | off | width <N> | todos <N> | scroll <N> | min-main <N>", "warning");
         return;
       }
 

@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- **Hide on narrow terminals** (opt-in): With `minMainWidth` set, the sidebar hides when pi's main area would be narrower than that many columns, giving pi the full terminal width, and comes back when the terminal widens again. The default is `0` (never hide), so nothing changes until you set it. `/sidebar-tui min-main 40` hides it below 86 columns with the default sidebar width; `/sidebar-tui min-main <N>` (0-500) sets it live, persisted to `sidebar-tui.json`. Closes #2.
+
+### Changed
+
+- **Width changes re-layout immediately**: `/sidebar-tui width <N>` now asks pi for a full render, so the main area reflows to the new width right away instead of on the next render.
+
 ## [1.7.8] - 2026-10-05
 
 ### Added

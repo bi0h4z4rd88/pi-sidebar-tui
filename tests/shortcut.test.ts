@@ -5,12 +5,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DEFAULT_SIDEBAR_SETTINGS } from "../config.ts";
 
-// The sidebar module captures width/todosMax from the config at import time
+// The sidebar module captures width/todosMax/minMainWidth from the config at import time
 // (the defaults when no file exists) and persists them on every toggle, so the
 // expected saved settings must match those defaults.
 const W = DEFAULT_SIDEBAR_SETTINGS.width;
 const saved = (enabled: boolean, scrollSpeed: number = DEFAULT_SIDEBAR_SETTINGS.scrollSpeed) =>
-  ({ enabled, width: W, todosMax: DEFAULT_SIDEBAR_SETTINGS.todosMax, scrollSpeed });
+  ({ enabled, width: W, todosMax: DEFAULT_SIDEBAR_SETTINGS.todosMax, scrollSpeed, minMainWidth: DEFAULT_SIDEBAR_SETTINGS.minMainWidth });
 
 function fakePi() {
   const shortcuts = new Map<string, { description?: string; handler: (ctx: any) => void }>();

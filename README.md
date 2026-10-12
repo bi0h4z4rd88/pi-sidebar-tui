@@ -55,6 +55,7 @@ The sidebar activates automatically when a session starts. Toggle visibility wit
 /sidebar-tui width 45  # Set sidebar width (10-120)
 /sidebar-tui todos 7   # Set the todos panel viewport height (1-100, default 7)
 /sidebar-tui scroll 3  # Set keyboard scroll nudge size in lines (1-20, default 3)
+/sidebar-tui min-main 40  # Hide the sidebar when pi's area would be narrower than 40 columns (default 0 = never hide)
 
 /sidebar-scroll up      # Scroll the focused panel up one nudge
 /sidebar-scroll down    # Scroll the focused panel down one nudge
@@ -78,6 +79,14 @@ Set custom session title:
 ```
 
 ## Configuration
+
+### Narrow terminals
+
+The sidebar can step aside on a terminal too narrow to fit both, giving pi the full width, and come back when the terminal widens again (a phone rotated to landscape, a split pane resized). It's off by default (`minMainWidth` `0`, the sidebar shows at any width). Set `/sidebar-tui min-main <N>` to hide it whenever pi's area would be narrower than N columns: with the default sidebar width of 45, `min-main 40` shows it from 86 columns up.
+
+Settings are saved in `~/.pi/agent/sidebar-tui.json` (`enabled`, `width`, `todosMax`, `scrollSpeed`, `minMainWidth`).
+
+### Environment
 
 | Env var | Default | Description |
 | --- | --- | --- |

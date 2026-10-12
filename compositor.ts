@@ -40,6 +40,9 @@ export class SidebarCompositor {
   private disposed = false;
 
   private readonly sidebarWidth: number;
+  // Fewest columns pi's main area may keep. Below it the sidebar steps aside
+  // and pi gets the whole terminal; 0 never hides it.
+  private readonly minMainWidth: number;
 
   // Last painted sidebar content, used to repaint only rows that actually
   // changed. Prevents full-panel rewrites every frame (the flicker source).
@@ -59,12 +62,13 @@ export class SidebarCompositor {
   private focusedPanel: string | null = null;
   private originalRouteWheel: ((event: any, delta: number) => void) | null = null;
 
-  constructor(tui: any, getCtx: () => SidebarContext, sidebarWidth = 40) {
+  constructor(tui: any, getCtx: () => SidebarContext, sidebarWidth = 40, minMainWidth = 0) {
     this.tui = tui;
     this.terminal = tui.terminal;
     this.getCtx = getCtx;
     this.originalWrite = this.terminal.write.bind(this.terminal);
     this.sidebarWidth = sidebarWidth;
+    this.minMainWidth = minMainWidth;
   }
 
   install(): void {
@@ -81,7 +85,7 @@ export class SidebarCompositor {
       get() {
         const d = origDesc;
         const raw = d?.get ? (d.get.call(terminal) ?? 80) : (typeof d?.value === "number" ? d.value : 80);
-        return Math.max(1, raw - self.sidebarWidth - 1);
+        return self.shown() ? Math.max(1, raw - self.sidebarWidth - 1) : raw;
       },
     });
 
@@ -100,6 +104,11 @@ export class SidebarCompositor {
       const self = this;
       this.tui.doRender = function (...args: any[]) {
         if (self.disposed) return originalDoRender.apply(this, args);
+        if (!self.shown()) {
+          // Nothing on screen to keep: the next shown frame must paint every row.
+          self.cacheValid = false;
+          return originalDoRender.apply(this, args);
+        }
 
         const writeOwnDesc = Object.getOwnPropertyDescriptor(terminal, "write");
         const originalWrite = terminal.write;
@@ -165,7 +174,8 @@ export class SidebarCompositor {
     this.originalRouteWheel = original;
     const self = this;
     this.tui.routeWheel = function (event: any, delta: number) {
-      if (self.disposed) return original.call(self.tui, event, delta);
+      // A hidden sidebar has no columns of its own: the wheel is pi's.
+      if (self.disposed || !self.shown()) return original.call(self.tui, event, delta);
       const sepCol = self.getSeparatorColumn(); // 1-based
       const x = typeof event?.x === "number" ? event.x : -1; // 0-based
       const y = typeof event?.y === "number" ? event.y : -1; // 0-based
@@ -258,6 +268,13 @@ export class SidebarCompositor {
     return typeof raw === "number" && Number.isFinite(raw) ? Math.max(1, Math.floor(raw)) : 80;
   }
 
+  // Whether the sidebar is on screen at the terminal's current width. pi-tui
+  // redraws in full whenever the width it reads changes, so flipping this on a
+  // resize repaints both the main area and the sidebar.
+  private shown(): boolean {
+    return this.minMainWidth <= 0 || this.rawColumns() - this.sidebarWidth - 1 >= this.minMainWidth;
+  }
+
   // Width of pi's main area (columns left of the separator). Used to bound the
   // erase so the sidebar columns are never cleared.
   private mainWidth(): number {
@@ -272,7 +289,7 @@ export class SidebarCompositor {
   }
 
   private paintInternal(forceFull: boolean, standalone: boolean): void {
-    if (this.disposed) return;
+    if (this.disposed || !this.shown()) return;
 
     const rawRows = this.terminal.rows;
     const rawCols = this.rawColumns();

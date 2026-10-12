@@ -40,7 +40,7 @@ Stack: **TypeScript (ESM, `"type":"module"`)** run via **Node native type-stripp
 | Run     | *N/A* — load into pi: `pi install npm:pi-sidebar-tui` |
 | Publish | `npm login` → `npm publish` (see release workflow below) |
 
-**In-pi controls** (once loaded): `/sidebar-tui on|off`, `/sidebar-tui width <10-120>`, `/sidebar-tui todos <N>`, `/session-title "..."`, shortcut **`Ctrl+Shift+T`** (toggle; rebind in `~/.pi/agent/keybindings.json`).
+**In-pi controls** (once loaded): `/sidebar-tui on|off`, `/sidebar-tui width <10-120>`, `/sidebar-tui todos <N>`, `/sidebar-tui min-main <0-500>`, `/session-title "..."`, shortcut **`Ctrl+Shift+T`** (toggle; rebind in `~/.pi/agent/keybindings.json`).
 
 ## CODING STANDARDS
 * **Language**: TypeScript, ESM. **Imports must include the `.ts` extension** (required by type-stripping, e.g. `import { x } from "./colors.ts"`).
@@ -52,7 +52,7 @@ Stack: **TypeScript (ESM, `"type":"module"`)** run via **Node native type-stripp
 
 ## WHERE TO LOOK
 * **Source / entry**: `index.ts` (event handlers + state), `panels/` (UI)
-* **Tests**: `tests/` (`panels.test.ts`, `sidebar.test.ts`, `config.test.ts`, `mcp.test.ts`, `parse-todos.test.ts`, `shortcut.test.ts`, `caveman.test.ts`)
+* **Tests**: `tests/` (`panels.test.ts`, `sidebar.test.ts`, `config.test.ts`, `mcp.test.ts`, `parse-todos.test.ts`, `shortcut.test.ts`, `caveman.test.ts`, `compositor.test.ts`, `narrow-terminal.test.ts`, `min-main.test.ts`)
 * **Docs**: `README.md`, `CHANGELOG.md`
 
 ## NOTES
@@ -60,7 +60,8 @@ Stack: **TypeScript (ESM, `"type":"module"`)** run via **Node native type-stripp
 * **`SidebarCompositor` (compositor.ts) monkey-patches** `terminal.columns` and `terminal.write`, and wraps `tui.doRender` in a synchronized-output block. Edits here are high-risk (flicker/regressions); it repaints only changed rows to stay flicker-free.
 * **Context bar color** is by window-usage %: green `<50`, yellow (accent) `50–80`, red (error) `>80`. The separate `left ≈Nt` row uses pace-based color (muted/accent/warning).
 * **Reserved panel rows**: Todos = header + 7 content (`padToMin`), grows past reserved only when content exceeds it; caps at `todosMax` with a ` … +N more` footer. MCP is **not** reserved: it renders exactly one row per configured server and is **hidden entirely** (`return []`) when no servers are configured.
-* **Defaults**: sidebar width `45`, `todosMax` `7` (todos viewport, 1-100), `scrollSpeed` `3`. Persisted to `~/.pi/agent/sidebar-tui.json` (corrupt/out-of-range → defaults).
+* **Narrow terminals**: `SidebarCompositor` hides the sidebar (pi gets the raw `columns`, no paint, no erase rewrite) while the main area would be narrower than `minMainWidth`; pi-tui redraws in full whenever the width it reads changes, which repaints both sides on the flip.
+* **Defaults**: sidebar width `45`, `todosMax` `7` (todos viewport, 1-100), `scrollSpeed` `3`, `minMainWidth` `0` (never hide; opt-in, so existing installs keep the sidebar at any width). Persisted to `~/.pi/agent/sidebar-tui.json` (corrupt/out-of-range → defaults).
 * **Release workflow**: bump `version` in `package.json` → add a `## [version] - YYYY-MM-DD` section to `CHANGELOG.md` (move `[Unreleased]` content in) → `git commit` + `git push origin main` → `npm publish`. The **lockfile root `version` is intentionally left stale** (repo convention; don't "fix" it).
 * **Publish `files`**: only `*.ts` + `panels/**/*.ts` are shipped (tests excluded).
 * **Shortcut mismatch**: code registers `ctrl+shift+t`; README's "Ctrl+Shift+S" note is stale.

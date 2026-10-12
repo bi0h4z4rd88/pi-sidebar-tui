@@ -21,15 +21,22 @@ export interface SidebarSettings {
   todosMax: number;
   /** Number of lines to scroll per up/down nudge (default: 3). A page is 3x this. */
   scrollSpeed: number;
+  /** Fewest columns pi's main area may keep; on a narrower terminal the sidebar hides. 0 never hides it. */
+  minMainWidth: number;
 }
 
-export const DEFAULT_SIDEBAR_SETTINGS: SidebarSettings = { enabled: true, width: 45, todosMax: 7, scrollSpeed: 3 };
+// minMainWidth defaults to 0 (never hide) so hiding on narrow terminals is
+// opt-in: any non-zero default would hide the sidebar on terminals where it
+// shows today (40 hides it below 86 columns, a plain 80-column one included).
+export const DEFAULT_SIDEBAR_SETTINGS: SidebarSettings = { enabled: true, width: 45, todosMax: 7, scrollSpeed: 3, minMainWidth: 0 };
 export const MIN_SIDEBAR_WIDTH = 10;
 export const MAX_SIDEBAR_WIDTH = 120;
 export const MIN_TODOS_MAX = 1;
 export const MAX_TODOS_MAX = 100;
 export const MIN_SCROLL_SPEED = 1;
 export const MAX_SCROLL_SPEED = 20;
+export const MIN_MAIN_WIDTH = 0;
+export const MAX_MAIN_WIDTH = 500;
 
 export function sidebarConfigPath(): string {
   return process.env["PI_SIDEBAR_CONFIG"] || join(agentDir(), "sidebar-tui.json");
@@ -137,6 +144,10 @@ export function loadSidebarSettings(path: string = sidebarConfigPath()): Sidebar
     const ss = obj["scrollSpeed"];
     if (typeof ss === "number" && Number.isInteger(ss) && ss >= MIN_SCROLL_SPEED && ss <= MAX_SCROLL_SPEED) {
       settings.scrollSpeed = ss;
+    }
+    const mm = obj["minMainWidth"];
+    if (typeof mm === "number" && Number.isInteger(mm) && mm >= MIN_MAIN_WIDTH && mm <= MAX_MAIN_WIDTH) {
+      settings.minMainWidth = mm;
     }
   }
   // Env override wins over both the file value and the default.

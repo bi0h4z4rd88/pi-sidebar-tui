@@ -23,13 +23,13 @@ test("loadSidebarSettings returns defaults when file is missing", () => {
 test("saveSidebarSettings then loadSidebarSettings round-trips", () => {
   const p = tmpFile();
   saveSidebarSettings({ enabled: false, width: 64 }, p);
-  assert.deepEqual(loadSidebarSettings(p), { enabled: false, width: 64, todosMax: 7, scrollSpeed: 3 });
+  assert.deepEqual(loadSidebarSettings(p), { enabled: false, width: 64, todosMax: 7, scrollSpeed: 3, minMainWidth: 0 });
 });
 
 test("saveSidebarSettings creates parent directory if missing", () => {
   const p = join(mkdtempSync(join(tmpdir(), "sidebar-cfg-")), "nested", "dir", "sidebar-tui.json");
   saveSidebarSettings({ enabled: true, width: 50 }, p);
-  assert.deepEqual(loadSidebarSettings(p), { enabled: true, width: 50, todosMax: 7, scrollSpeed: 3 });
+  assert.deepEqual(loadSidebarSettings(p), { enabled: true, width: 50, todosMax: 7, scrollSpeed: 3, minMainWidth: 0 });
 });
 
 test("loadSidebarSettings returns defaults for corrupt JSON", () => {
@@ -96,6 +96,31 @@ test("loadSidebarSettings respects PI_SIDEBAR_SCROLL_SPEED env override", () => 
     else process.env.PI_SIDEBAR_SCROLL_SPEED = prev;
   }
 });
+
+test("loadSidebarSettings defaults minMainWidth to 0 (never hide) when missing, so hiding is opt-in", () => {
+  assert.equal(loadSidebarSettings(tmpFile()).minMainWidth, 0);
+});
+
+test("saveSidebarSettings round-trips minMainWidth, including 0 (never hide)", () => {
+  for (const minMainWidth of [0, 60]) {
+    const p = tmpFile();
+    saveSidebarSettings({ enabled: true, width: 50, todosMax: 10, minMainWidth }, p);
+    assert.equal(loadSidebarSettings(p).minMainWidth, minMainWidth);
+  }
+});
+
+for (const [name, value] of [
+  ["negative", -1],
+  ["above the maximum", 501],
+  ["not an integer", 40.5],
+  ["not a number", "wide"],
+] as const) {
+  test(`loadSidebarSettings ignores a minMainWidth that is ${name}`, () => {
+    const p = tmpFile();
+    writeFileSync(p, JSON.stringify({ minMainWidth: value }));
+    assert.equal(loadSidebarSettings(p).minMainWidth, 0);
+  });
+}
 
 function tmpDirs() {
   const agent = mkdtempSync(join(tmpdir(), "sidebar-agent-"));
