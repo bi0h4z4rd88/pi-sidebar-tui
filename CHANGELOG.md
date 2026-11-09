@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- A pi this package was not verified against now warns once per session, naming the pi and the verified release lines
+  (1.2 through 1.5). Anything learned before a context existed to notify through is queued and shown at session start.
+- The ten load-time `registerCommand`/`registerShortcut` calls go through a guarded registrar: a pi that moved one
+  warns once, naming it, instead of throwing while the package loads.
+
+### Changed
+
+- The vendored `@earendil-works/pi-coding-agent` moves to 1.5.0; the suite runs there.
 ## [1.7.8] - 2026-10-05
 
 ### Added
