@@ -1,3 +1,4 @@
+import { api, createWarner, piVersion, versionNotice } from "./pi-guard.ts";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { loadSidebarSettings, getAutoCompactEnabled, saveSidebarSettings, MIN_TODOS_MAX, MAX_TODOS_MAX, MIN_SCROLL_SPEED, MAX_SCROLL_SPEED } from "./config.ts";
 import type { TodoItem, SidebarContext, CtxSample } from "./types.ts";
@@ -196,6 +197,23 @@ function updateContextUsage(ctx: any): void {
 }
 
 export default function piSidebar(pi: ExtensionAPI) {
+  // One warner for the session, and a queue for anything learned before a context exists to notify through: a pi that
+  // moved an internal at load time must be named, not thrown. See pi-guard.ts.
+  let notifyUser: ((message: string, level?: "info" | "warning" | "error") => void) | undefined;
+  const pendingWarnings: Array<[string, "info" | "warning" | "error"]> = [];
+  const warner = createWarner((message, level) => {
+    if (notifyUser) notifyUser(message, level);
+    else pendingWarnings.push([message, level ?? "warning"]);
+  });
+  /** Registers through pi when it still provides the registrar, and warns once when it does not. */
+  const register = (name: "registerCommand" | "registerShortcut", ...args: unknown[]): void => {
+    const fn = (pi as unknown as Record<string, unknown>)[name];
+    if (typeof fn !== "function") {
+      api(warner, `pi.${name}`, undefined as unknown, undefined);
+      return;
+    }
+    (fn as (...a: unknown[]) => void).apply(pi, args);
+  };
   let currentCwd: string | undefined = process.cwd();
   let requestRender: (() => void) | null = null;
   let tuiRef: any = null;
@@ -259,6 +277,10 @@ export default function piSidebar(pi: ExtensionAPI) {
   };
 
   pi.on("session_start", async (_event, ctx) => {
+    notifyUser = (message, level) => ctx.ui?.notify?.(message, level);
+    for (const [message, level] of pendingWarnings.splice(0)) try { notifyUser(message, level); } catch { /* a warning is not worth the session */ }
+    const piNotice = versionNotice(piVersion());
+    if (piNotice) warner.warn("pi-version", piNotice);
     sessionManager = ctx.sessionManager;
     sessionTitle = ctx.sessionManager.getSessionName() ?? inferSessionTitle(ctx.sessionManager) ?? null;
     // Seed todos from session history so the panel is correct on resume/branch
@@ -565,7 +587,7 @@ export default function piSidebar(pi: ExtensionAPI) {
     requestRender?.();
   });
 
-  pi.registerCommand("sidebar-tui", {
+  register("registerCommand", "sidebar-tui", {
     description: "Control sidebar: /sidebar-tui on | off | width <N> | todos <N>",
     handler: async (args, ctx) => {
       currentCwd = (ctx as any).cwd;
@@ -627,7 +649,7 @@ export default function piSidebar(pi: ExtensionAPI) {
     },
   });
 
-  pi.registerShortcut("ctrl+shift+t", {
+  register("registerShortcut", "ctrl+shift+t", {
     description: "Toggle sidebar on/off",
     handler: async (ctx) => {
       currentCwd = (ctx as any).cwd;
@@ -643,7 +665,7 @@ export default function piSidebar(pi: ExtensionAPI) {
   const scrollByLines = (delta: number) => { compositorRef?.scrollFocused(delta); };
   const pageLines = () => scrollSpeed * 3;
 
-  pi.registerCommand("sidebar-scroll", {
+  register("registerCommand", "sidebar-scroll", {
     description: "Scroll sidebar panel: /sidebar-scroll up | down | top | bottom | <lines>",
     handler: async (args, ctx) => {
       if (!compositorRef) {
@@ -671,32 +693,32 @@ export default function piSidebar(pi: ExtensionAPI) {
     },
   });
 
-  pi.registerShortcut("alt+shift+up", {
+  register("registerShortcut", "alt+shift+up", {
     description: "Scroll sidebar up",
     handler: async () => { scrollByLines(-scrollSpeed); },
   });
-  pi.registerShortcut("alt+shift+down", {
+  register("registerShortcut", "alt+shift+down", {
     description: "Scroll sidebar down",
     handler: async () => { scrollByLines(scrollSpeed); },
   });
-  pi.registerShortcut("ctrl+alt+up", {
+  register("registerShortcut", "ctrl+alt+up", {
     description: "Scroll sidebar up",
     handler: async () => { scrollByLines(-scrollSpeed); },
   });
-  pi.registerShortcut("ctrl+alt+down", {
+  register("registerShortcut", "ctrl+alt+down", {
     description: "Scroll sidebar down",
     handler: async () => { scrollByLines(scrollSpeed); },
   });
-  pi.registerShortcut("alt+pageup", {
+  register("registerShortcut", "alt+pageup", {
     description: "Scroll sidebar page up",
     handler: async () => { scrollByLines(-pageLines()); },
   });
-  pi.registerShortcut("alt+pagedown", {
+  register("registerShortcut", "alt+pagedown", {
     description: "Scroll sidebar page down",
     handler: async () => { scrollByLines(pageLines()); },
   });
 
-  pi.registerCommand("session-title", {
+  register("registerCommand", "session-title", {
     description: "Set session title shown in sidebar",
     handler: async (args, ctx) => {
       const title = args?.trim() ?? "";
