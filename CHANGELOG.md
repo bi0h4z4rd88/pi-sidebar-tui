@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Fixed
+
+- **Editor flashing while typing**: the compositor no longer rewrites pi's full-line erase (`\x1b[2K`) into a width-limited erase-characters sequence (`\x1b[<mainWidth>X`). A frame that contains a full-line erase now repaints the sidebar in the same synchronized block, since that erase also clears the sidebar columns on that row.
+
 ## [1.7.8] - 2026-10-05
 
 ### Added

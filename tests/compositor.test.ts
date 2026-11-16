@@ -252,3 +252,54 @@ test("doRender wrapper forces full repaint when pi emits a cursor-scroll sequenc
 
   comp.dispose();
 });
+
+test("doRender wrapper keeps pi's full-line erase instead of rewriting it", () => {
+  const terminal = makeTerminal(80, 15);
+  const tui: any = {
+    terminal,
+    mode: "fullscreen",
+    doRender() {
+      terminal.write("\x1b[10;1H\x1b[2Ktyped text");
+    },
+  };
+  const comp = new SidebarCompositor(tui, () => makeCtx({}), 25);
+  comp.install();
+
+  tui.doRender();
+  const out = terminal.writes.join("");
+  assert.ok(out.includes("\x1b[2Ktyped text"), "pi's \\x1b[2K should reach the terminal unchanged");
+  assert.ok(!/\x1b\[\d+Xtyped text/.test(out), "\\x1b[2K must not be rewritten into a bounded erase");
+
+  comp.dispose();
+});
+
+test("doRender wrapper repaints the sidebar when pi erases a full line", () => {
+  const terminal = makeTerminal(80, 15);
+  let erase = false;
+  const tui: any = {
+    terminal,
+    mode: "fullscreen",
+    doRender() {
+      if (erase) terminal.write("\x1b[10;1H\x1b[2Ktyped text");
+    },
+  };
+  const comp = new SidebarCompositor(tui, () => makeCtx({}), 25);
+  comp.install();
+  const countSeps = () => terminal.writes.join("").split("│").length - 1;
+
+  tui.doRender();
+  assert.equal(countSeps(), 15, "first render should paint all rows");
+
+  terminal.writes.length = 0;
+  tui.doRender();
+  assert.equal(countSeps(), 0, "unchanged render should paint no rows");
+
+  // A full-line erase also clears the sidebar columns on that row, so the
+  // sidebar has to be repainted in the same frame.
+  erase = true;
+  terminal.writes.length = 0;
+  tui.doRender();
+  assert.equal(countSeps(), 15, "a full-line erase should force a full sidebar repaint");
+
+  comp.dispose();
+});
