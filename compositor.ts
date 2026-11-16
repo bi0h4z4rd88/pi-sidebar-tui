@@ -92,8 +92,9 @@ export class SidebarCompositor {
     //   - wrap the whole doRender in a single synchronized-output block
     //     (?2026h ... ?2026l), stripping pi's own markers, so the main area and
     //     the sidebar update atomically (no gap where the sidebar is gone);
-    //   - rewrite pi's full-line erase (\x1b[2K) into a width-limited erase
-    //     (\x1b[<mainWidth>X) so pi's renders never wipe the sidebar columns.
+    //   - keep pi's own full-line erase (\x1b[2K). It also clears the sidebar
+    //     columns on that row, so a frame that contains it repaints the sidebar
+    //     (forceFullPaint) in the same synchronized block.
     if (typeof this.tui.doRender === "function") {
       const originalDoRender = this.tui.doRender;
       this.originalDoRender = originalDoRender;
@@ -103,7 +104,6 @@ export class SidebarCompositor {
 
         const writeOwnDesc = Object.getOwnPropertyDescriptor(terminal, "write");
         const originalWrite = terminal.write;
-        const mainWidth = self.mainWidth();
         let forceFullPaint = false;
         let result: any;
         let didThrow = false;
@@ -117,10 +117,8 @@ export class SidebarCompositor {
             writable: true,
             value(this: any, data: string) {
               if (typeof data !== "string") return originalWrite.call(this, data);
-              if (/\x1b\[(?:2J|3J)|\n|\r\n|\x1b\[\d*[ST]|\x1bM/.test(data)) forceFullPaint = true;
-              const sanitized = data
-                .replace(/\x1b\[\?2026[hl]/g, "")
-                .replace(/\x1b\[2K/g, `\x1b[${mainWidth}X`);
+              if (/\x1b\[(?:2J|3J|2K)|\n|\r\n|\x1b\[\d*[ST]|\x1bM/.test(data)) forceFullPaint = true;
+              const sanitized = data.replace(/\x1b\[\?2026[hl]/g, "");
               return originalWrite.call(this, sanitized);
             },
           });
@@ -256,13 +254,6 @@ export class SidebarCompositor {
       ? d.get.call(this.terminal)
       : (typeof d?.value === "number" ? d.value : undefined);
     return typeof raw === "number" && Number.isFinite(raw) ? Math.max(1, Math.floor(raw)) : 80;
-  }
-
-  // Width of pi's main area (columns left of the separator). Used to bound the
-  // erase so the sidebar columns are never cleared.
-  private mainWidth(): number {
-    const rawCols = this.rawColumns();
-    return Math.max(1, rawCols - this.sidebarWidth - 1);
   }
 
   private formatLine(line: string | undefined, width: number): string {
